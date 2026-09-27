@@ -1,0 +1,9 @@
+pandas>=2.2
+numpy
+pyarrow
+PyYAML
+requests
+numba
+matplotlib
+finance-datareader
+pykrx
