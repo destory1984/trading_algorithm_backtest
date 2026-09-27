@@ -91,6 +91,10 @@ stage2:
 report:
   top_n: 10
 
+walkforward:                 # python -m src.walkforward [--us]
+  first_test_year: 2011      # 첫 검증 해. 학습은 data.start 부터 그 전 해까지 (2008~2010, 금융위기 포함)
+  min_test_trades: 20        # 그 해 중앙값·순위 상관에 넣을 조합의 그 해 거래 수 하한
+
 # 미국 주식 (python -m src.us). 그리드·청산 규칙·시장 필터 이름은 위와 같고, 아래만 바꾼다
 us:
   dir: ../us_data            # krxbt.fetch_us 로 받은 폴더. 환경변수 US_DATA_DIR 가 있으면 그쪽
