@@ -90,3 +90,17 @@ stage2:
 
 report:
   top_n: 10
+
+# 미국 주식 (python -m src.us). 그리드·청산 규칙·시장 필터 이름은 위와 같고, 아래만 바꾼다
+us:
+  dir: ../us_data            # krxbt.fetch_us 로 받은 폴더. 환경변수 US_DATA_DIR 가 있으면 그쪽
+  market_index: NDX          # 시장 필터(상승장·동반급락)에 쓰는 지수. NDX / DJI / SPX
+  min_avg_value: 2.0e+7      # 20일 평균 거래대금 하한(달러)
+  min_trades: 100            # 순위를 매길 때 거래 수 하한 (종목이 129개뿐이라 한국보다 낮다)
+  initial_capital: 100000    # 포트폴리오 달러
+  portfolio_top_n: 3
+  costs:                     # 국내 증권사 해외주식 수수료(우대 0.07%) 가정. 양도세 22%(연 250만 원 넘는 이익)는 뺐다
+    buy_fee: 0.0007
+    sell_fee: 0.0007
+    sell_tax: 0.0            # SEC 수수료(매도의 0.003% 안팎)는 무시
+    slippage: 0.0005         # 편도. 대형주라 한국(0.1%)보다 낮게
