@@ -95,6 +95,11 @@ def run_all(cfg: dict, limit: int | None = None) -> pd.DataFrame:
             if i % 250 == 0:
                 print(f"  {i}/{len(jobs)} tickers, {time.time() - t0:.0f}s")
     df = pd.concat(trades, ignore_index=True)
+    brk = df[df["data_break"]]
+    brk.groupby("combo").size().rename("dropped").to_csv(results_dir() / "data_break_trades.csv")
+    print(f"dropped {len(brk):,} trades held across a price-data break "
+          f"({brk.drop_duplicates(['ticker', 'entry_date'])['ticker'].nunique()} tickers)")
+    df = df[~df["data_break"]].drop(columns="data_break").reset_index(drop=True)
     df["ticker"] = df["ticker"].astype("category")
     df["market"] = df["market"].astype("category")
     df["reason"] = df["reason"].astype("category")

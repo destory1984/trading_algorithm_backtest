@@ -198,6 +198,10 @@ def fetch_prices(cfg: dict, tickers: list[str], delisted: set[str]) -> None:
         info = meta.get(t, {})
         fetched_until = pd.Timestamp(info["fetched_until"]) if "fetched_until" in info else None
         try:
+            if info.get("from") != str(start.date()):
+                fetched_until = None  # start date moved: cached history is too short
+                if path.exists():
+                    path.unlink()
             if path.exists() and fetched_until is not None and (
                 fetched_until >= cal_last or (t in delisted and info.get("delisted"))
             ):
@@ -220,7 +224,7 @@ def fetch_prices(cfg: dict, tickers: list[str], delisted: set[str]) -> None:
                 df = _download(t, start, end)
                 n_new += 1
             df.to_parquet(path)
-            meta[t] = {"fetched_until": str(cal_last.date()), "delisted": t in delisted,
+            meta[t] = {"fetched_until": str(cal_last.date()), "from": str(start.date()), "delisted": t in delisted,
                        "rows": int(len(df))}
         except Exception as e:  # keep going; one bad ticker should not stop the run
             n_fail += 1

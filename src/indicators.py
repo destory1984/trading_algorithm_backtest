@@ -68,17 +68,29 @@ def ticker_frame(cfg: dict, ticker: str, market: str, cal: pd.DatetimeIndex,
     halted_before = pd.Series(np.diff(pos, prepend=pos[0]) - 1, index=v.index).clip(lower=0)
     resumed = halted_before > uni.get("long_halt_days", 3)
     hit = resumed.copy()
+    chg = v["close"] / v["close"].shift(1) - 1
     brk = uni.get("price_break_drop")
+    beyond = pd.Series(False, index=v.index)
     if brk is not None:
-        chg = v["close"] / v["close"].shift(1) - 1
-        hit |= (chg < brk) & ~resumed
+        lim = np.where(v.index < pd.Timestamp("2015-06-15"), uni.get("price_break_drop_pre_2015", brk), brk)
+        beyond = ((chg < lim) | (chg > -lim)) & ~resumed  # moves past the daily price limit
+        hit |= (chg < lim) & ~resumed
+    # Price jumps that cannot be real trading: past the daily limit, or more than
+    # half / double on the day trading resumes after a long halt. Trades held
+    # across one are dropped as data errors (except in the delisting sale,
+    # where there is no limit and the crash is real).
+    gap = uni.get("resume_gap_break", 0.5)
+    brk_day = beyond | (resumed & ((chg < -gap) | (chg > 1 / (1 - gap) - 1)))
     # Block the break / resume day and the next ma_window-1 traded days, until
     # MA25 no longer mixes prices from both sides of the break.
     blocked = hit.astype(int).rolling(w, min_periods=1).max().astype(bool)
     f.loc[blocked.reindex(f.index, fill_value=False).to_numpy(), "eligible"] = False
     n_sale = uni.get("delisting_sale_days", 0)
     if delisted and n_sale:
-        f.loc[f.index >= v.index[-min(n_sale, len(v))], "eligible"] = False
+        sale_start = v.index[-min(n_sale, len(v))]
+        f.loc[f.index >= sale_start, "eligible"] = False
+        brk_day &= v.index < sale_start
+    f["data_break"] = brk_day.reindex(f.index, fill_value=False).to_numpy()
     return f
 
 

@@ -20,12 +20,11 @@ import pandas as pd
 from .common import load_calendar, load_config, load_prices, results_dir
 from .grid import combos, universe_tickers
 from .indicators import index_features, ticker_frame
-from .simulate import cost_factors, simulate
+from .simulate import net_return, simulate
 
 
 def reference_trades(f: pd.DataFrame, cfg: dict, thr: float, stop: float | None, hold: int) -> list[tuple]:
     """Plain loop over rows, written independently of simulate.run_kernel."""
-    buy_cost, sell_keep = cost_factors(cfg)
     rows = list(f.itertuples())
     out, i = [], 0
     while i < len(rows):
@@ -62,7 +61,7 @@ def reference_trades(f: pd.DataFrame, cfg: dict, thr: float, stop: float | None,
                     target_hit = True
                 last_valid = j
             j += 1
-        ret = exit_px * sell_keep / (entry * buy_cost) - 1
+        ret = float(net_return(cfg, [entry], [exit_px], [rows[exit_i].Index])[0])
         out.append((rows[i].Index, rows[e].Index, rows[exit_i].Index, entry, exit_px, round(ret, 10), reason))
         # next signal may be the exit day itself only when the exit was at the open
         at_open = reason == "target" or (reason == "stop" and exit_px == rows[exit_i].open)
@@ -91,7 +90,10 @@ def main() -> None:
         v = p[p["volume"] > 0]
         chg = v["close"] / v["close"].shift(1) - 1
         gap = (v.index.to_series().diff().dt.days <= 5)  # consecutive trading, not after a long halt
-        bad = chg[(chg < -0.31) & gap]
+        u = cfg["universe"]
+        lim = np.where(v.index < pd.Timestamp("2015-06-15"), u.get("price_break_drop_pre_2015", -0.16),
+                       u.get("price_break_drop", -0.30))
+        bad = chg[(chg < lim) & gap]
         sale_start = v.index[-min(n_sale, len(v))] if tk.loc[t, "delisted"] and n_sale else None
         for d, c in bad.items():
             if sale_start is not None and d >= sale_start:
@@ -102,7 +104,7 @@ def main() -> None:
     sig_keys = set(zip(tr["ticker"].astype(str), tr["signal_date"]))
     signal_on_break = len(bad_keys & sig_keys)
     lines += ["## 2. 수정주가 (액면분할·무상증자 가짜 급락)",
-              f"- 하한가(-30%)를 넘는 하루 하락 중 정리매매 기간(가격 제한 없음) 안: {sale_breaks}건",
+              f"- 가격 제한(2015-06-15 전 -15%, 이후 -30%)을 넘는 하루 하락 중 정리매매 기간(가격 제한 없음) 안: {sale_breaks}건",
               f"- 그 밖의 하한가 초과 하락: {len(limit_breaks)}건 (5일 넘는 거래정지 직후는 뺐다). "
               "대부분 거래량이 수천 주인 종목에서 시세가 수정되지 않고 끊긴 것이라, 그날부터 25거래일은 신호를 막는다 "
               "(config `price_break_drop`)",

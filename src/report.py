@@ -168,16 +168,20 @@ def main() -> None:
     n_delisted = (usable.groupby("ticker")["snapshot"].max() < last_snap).sum()
     src = ", ".join(sorted(uni["source"].unique()))
 
+    dbp = rd / "data_break_trades.csv"
+    drop_mean = pd.read_csv(dbp)["dropped"].sum() / len(cmb) if dbp.exists() else 0.0
     out = ["# BNF 25일선 이격도 매매 백테스트 결과", ""]
     out += [
         "## 데이터와 가정", "",
         f"- 기간: {cfg['data']['start']} → {cal[-1].date()} (신호 기준). 거래일 {int((cal >= pd.Timestamp(cfg['data']['start'])).sum()):,}일.",
         f"- 종목: 코스피·코스닥 {usable['ticker'].nunique():,}개. 그중 기간 중 상장폐지 {n_delisted}개 포함. 목록 출처: {src}.",
         f"- 전체 거래 기록 {len(tr):,}건 ({len(cmb)}개 조합 × 종목, 시장 구분은 같은 거래를 나눠 본 것).",
-        f"- 비용: 매수·매도 수수료 각 {cfg['costs']['buy_fee']:.3%}, 매도세 {cfg['costs']['sell_tax']:.2%}, "
-        f"슬리피지 편도 {cfg['costs']['slippage']:.1%}. 왕복 약 "
-        f"{(1 - (1 - cfg['costs']['slippage']) * (1 - cfg['costs']['sell_fee'] - cfg['costs']['sell_tax']) / ((1 + cfg['costs']['slippage']) * (1 + cfg['costs']['buy_fee']))):.2%}.",
+        f"- 비용: 매수·매도 수수료 각 {cfg['costs']['buy_fee']:.3%}, 슬리피지 편도 {cfg['costs']['slippage']:.1%}, 매도세는 "
+        + (" → ".join(f"{a[:4]}년 {r:.2%}" for a, r in cfg["costs"]["sell_tax_schedule"])
+           + " (매도일 기준)" if cfg["costs"].get("sell_tax_schedule") else f"{cfg['costs']['sell_tax']:.2%}") + ".",
         "- 진입은 신호 다음 날 시가. 보유일은 진입일을 1일째로 센다.",
+        "- 거래정지 뒤 시세가 수정되지 않고 끊긴 날(재개일에 반 토막 이하·두 배 이상, 또는 가격 제한 초과)을 끼고 "
+        f"들고 있던 거래는 뺐다. 뺀 거래는 조합당 평균 {drop_mean:.1f}건.",
         f"- 순위표는 거래가 {min_n}건 이상인 조합만 넣었다.",
         "- 기대값 = 승률 × 평균 이익 + (1 − 승률) × 평균 손실. 거래당 평균 수익률과 같은 값이다.",
         "",
@@ -282,7 +286,7 @@ def main() -> None:
         ex.append({"조합": f"#{i}", "전체 거래": f"{len(t):,}", "급락 구간 거래 비중": f"{m.mean():.0%}",
                    "전체 기대값": pct(t["ret"].mean()), "급락 구간 뺀 기대값": pct(x.mean()),
                    "급락 구간 뺀 중앙값": pct(x.median()), "급락 구간 뺀 승률": f"{(x > 0).mean():.1%}"})
-    out += ["급락 구간(위 표의 네 구간)에 진입한 거래를 모두 뺀 성과:", "", md_table(pd.DataFrame(ex)), ""]
+    out += [f"급락 구간(위 표의 {len(st2['crash_periods'])}개 구간)에 진입한 거래를 모두 뺀 성과:", "", md_table(pd.DataFrame(ex)), ""]
 
     # co-crash split
     thr = cfg["indicators"]["index_disparity_crash"]

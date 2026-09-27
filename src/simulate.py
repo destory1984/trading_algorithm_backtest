@@ -128,12 +128,25 @@ def cost_factors(cfg: dict) -> tuple[float, float]:
     return buy_cost, sell_keep
 
 
+def net_return(cfg: dict, entry_px, exit_px, exit_dates) -> np.ndarray:
+    """Return after fees, slippage and the sell tax in force on each exit date."""
+    cs = cfg["costs"]
+    buy_cost, _ = cost_factors(cfg)
+    dates = pd.DatetimeIndex(exit_dates)
+    tax = np.full(len(dates), cs["sell_tax"], dtype=np.float64)
+    for since, rate in cs.get("sell_tax_schedule") or []:
+        tax[dates >= pd.Timestamp(since)] = rate
+    keep = (1 - cs["slippage"]) * (1 - cs["sell_fee"] - tax)
+    return np.asarray(exit_px, np.float64) * keep / (np.asarray(entry_px, np.float64) * buy_cost) - 1.0
+
+
 def arrays(f: pd.DataFrame) -> dict:
     return {k: f[k].to_numpy(np.float64) for k in ("open", "high", "low", "close", "ma", "disp", "idx_disp")} | {
         "valid": f["valid"].to_numpy(np.bool_),
         "eligible": f["eligible"].to_numpy(np.bool_),
         "uptrend": f["idx_regime"].to_numpy(np.bool_),
         "crash": f["idx_crash"].to_numpy(np.bool_),
+        "break_cum": np.cumsum(f["data_break"].to_numpy(np.int32)) if "data_break" in f else np.zeros(len(f), np.int32),
         "idx_disp_raw": f["idx_disp"].to_numpy(np.float64),
     }
 
@@ -162,10 +175,12 @@ def simulate(f: pd.DataFrame, cfg: dict, threshold: float, stop: float | None, h
     dates = f.index.to_numpy()
     return pd.DataFrame({
         "signal_date": dates[sig], "entry_date": dates[ent], "exit_date": dates[ext],
-        "entry_px": epx, "exit_px": xpx, "ret": ret,
+        "entry_px": epx, "exit_px": xpx, "ret": net_return(cfg, epx, xpx, dates[ext]),
         "hold_days": (ext - ent + 1).astype(np.int16),
         "reason": REASONS[rsn], "rebound": reb,
         "disp": a["disp"][sig], "idx_disp": a["idx_disp"][sig],
+        # a price-data break on any day after entry up to the exit
+        "data_break": a["break_cum"][ext] > a["break_cum"][ent],
     })
 
 
@@ -183,7 +198,7 @@ def main() -> None:
     f = ticker_frame(cfg, t, info["market"], load_calendar(cfg), index_features(cfg), bool(info["delisted"]))
     tr = simulate(f, cfg, thr, stop, hold, sys.argv[5] if len(sys.argv) > 5 else "none")
     pd.set_option("display.width", 200)
-    print(f"{t} {market} threshold={thr} stop={stop} hold={hold}: {len(tr)} trades")
+    print(f"{t} {info['market']} threshold={thr} stop={stop} hold={hold}: {len(tr)} trades")
     print(tr.round(4).to_string())
     for _, row in tr.head(3).iterrows():
         lo = f.index.get_loc(row["signal_date"])
