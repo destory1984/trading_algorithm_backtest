@@ -13,6 +13,9 @@
 
 ## 데이터
 
+데이터 수집, 거르는 규칙, 매매·포트폴리오 계산은 엔진 저장소 [krx_backtest_core](https://github.com/destory1984/krx_backtest_core)(`krxbt`)에 있다.
+이 저장소에는 이격도 규칙, 그리드, 보고서만 있다. 시세는 저장소 옆 `../krx_data` 폴더에 두고 다른 알고리즘과 같이 쓴다.
+
 | 무엇 | 어디서 |
 |---|---|
 | 일봉 시세(수정주가), 지수 | 네이버 차트 API `api.finance.naver.com/siseJson.naver` |
@@ -123,8 +126,8 @@ FinanceDataReader 가 쓰는 네이버 주소는 최근 3,000 거래일(약 12�
 ## 돌리는 법
 
 ```
-pip install -r requirements.txt
-python -m src.fetch        # 시세 수집. 처음엔 약 35분(3,243개, 요청 사이 0.3초). 다시 돌리면 새 날짜만 받는다
+pip install -r requirements.txt   # 엔진 krxbt v0.1.0 을 깃허브에서 받는다. 엔진을 같이 고칠 땐 pip install -e ../krx_backtest_core
+python -m krxbt.fetch      # 시세 수집 → ../krx_data. 처음엔 약 35분(3,243개, 요청 사이 0.3초). 다시 돌리면 새 날짜만 받는다
 python -m src.grid         # 1,440개 조합 시뮬레이션과 요약
 python -m src.checks       # 검증 체크리스트
 python -m src.portfolio    # 상위 5개 조합 포트폴리오
@@ -140,13 +143,13 @@ python -m src.simulate 005930 85 -0.08 10 crash97   # 종목, 이격도 기준, 
 ## 파일
 
 ```
-config.yaml          모든 파라미터
-src/fetch.py         종목 목록, 지수, 시세 수집 (data/ 에 parquet 캐시)
-src/indicators.py    25일선, 이격도, 거래대금, 지수 120일선 필터
-src/simulate.py      거래 한 건씩 시뮬레이션 (numba)
+config.yaml          모든 파라미터 (data·universe·rules·costs 는 엔진이 읽는다)
+src/common.py        설정 읽기, results/ 경로
+src/simulate.py      이격도 규칙: 신호(이격도 ≤ 기준값 + 시장 필터), 익절(종가 ≥ 25일선). 계산은 krxbt.engine
 src/grid.py          파라미터 그리드, grid_summary.csv
 src/checks.py        검증 체크리스트, 단순 반복문으로 다시 계산해 대조
-src/portfolio.py     1억 원, 최대 5종목 포트폴리오
+src/portfolio.py     1억 원, 최대 5종목 포트폴리오 (계산은 krxbt.portfolio)
+src/divergence.py    덤: RSI 다이버전스 일봉 시험
 src/report.py        히트맵, report.md
 results/             trades.parquet, grid_summary.csv, heatmap_*.png, report.md
 ```

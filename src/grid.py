@@ -19,8 +19,10 @@ from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 import pandas as pd
 
-from .common import load_calendar, load_config, load_universe, price_dir, results_dir
-from .indicators import index_features, ticker_frame
+from krxbt.data import universe_tickers  # noqa: F401  (re-exported for the other modules)
+from krxbt.frame import index_features, ticker_frame
+
+from .common import load_calendar, load_config, results_dir
 from .simulate import arrays, candidates, simulate
 
 
@@ -30,16 +32,6 @@ def combos(cfg: dict) -> pd.DataFrame:
     df = pd.DataFrame(rows, columns=["market_filter", "threshold", "stop", "hold"])
     df.index.name = "combo"
     return df
-
-
-def universe_tickers(cfg: dict) -> pd.DataFrame:
-    """One row per usable ticker with its latest market and delisting flag."""
-    uni = load_universe(cfg)
-    uni = uni[uni["excluded"].isna()].sort_values("snapshot")
-    last = uni.groupby("ticker").tail(1).set_index("ticker")
-    last["delisted"] = last["snapshot"] < uni["snapshot"].max()
-    have = {p.stem for p in price_dir(cfg).glob("*.parquet")}
-    return last[last.index.isin(have)][["market", "name", "delisted"]]
 
 
 _W: dict = {}

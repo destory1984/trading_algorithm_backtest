@@ -136,7 +136,7 @@ def _init(cfg):
 
 def _trades(cfg, f, a, cand, hold, stop, on_close=False):
     ru = cfg["rules"]
-    no_target = np.full(len(f), np.inf)
+    no_target = np.zeros(len(f), np.bool_)
     sig, ent, ext, epx, xpx, _, rsn, _ = run_kernel(
         a["open"], a["high"], a["low"], a["close"], no_target, a["valid"], cand,
         stop if stop is not None else 0.0, int(hold), on_close, False, 1.0, 1.0, True)
@@ -147,7 +147,7 @@ def _trades(cfg, f, a, cand, hold, stop, on_close=False):
 
 def _run_ticker(args):
     from .grid import _W as G
-    from .indicators import ticker_frame
+    from krxbt.frame import ticker_frame
     ticker, market, delisted = args
     cfg = G["cfg"]
     f = ticker_frame(cfg, ticker, market, G["cal"], G["idx"], delisted)
@@ -282,7 +282,7 @@ def report(cfg, s: pd.DataFrame, base: pd.DataFrame) -> str:
 
 def show(cfg, ticker: str) -> None:
     from .grid import universe_tickers
-    from .indicators import index_features, ticker_frame
+    from krxbt.frame import index_features, ticker_frame
     info = universe_tickers(cfg).loc[ticker]
     f = ticker_frame(cfg, ticker, info["market"], load_calendar(cfg), index_features(cfg), bool(info["delisted"]))
     v = f[f["valid"]]

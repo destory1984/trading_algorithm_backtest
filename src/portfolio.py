@@ -23,7 +23,10 @@ from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 import pandas as pd
 
-from .common import load_calendar, load_config, load_index, load_prices, results_dir
+from krxbt import portfolio as kp
+from krxbt.portfolio import stats
+
+from .common import load_calendar, load_config, results_dir
 
 
 def filter_label(v: str) -> str:
@@ -58,7 +61,7 @@ def _init(cfg, combo_rows):
 
 def _candidates_for_ticker(args):
     from .grid import _W as G
-    from .indicators import ticker_frame
+    from krxbt.frame import ticker_frame
     from .simulate import arrays, simulate
     ticker, market, delisted = args
     cfg = G["cfg"]
@@ -94,103 +97,31 @@ def candidate_trades(cfg: dict, combo_ids: list[int]) -> pd.DataFrame:
     return pd.concat(parts, ignore_index=True)
 
 
+def _cal(cfg: dict) -> pd.DatetimeIndex:
+    cal = load_calendar(cfg)
+    return cal[cal >= pd.Timestamp(cfg["data"]["start"])]
+
+
 def _close_panel(cfg: dict, tickers, cal: pd.DatetimeIndex) -> pd.DataFrame:
-    cols = {}
-    for t in tickers:
-        p = load_prices(cfg, t)
-        c = p["close"].where(p["volume"] > 0)
-        cols[t] = c[~c.index.duplicated(keep="last")]
-    return pd.DataFrame(cols).reindex(cal).ffill()
+    return kp.close_panel(cfg, tickers, cal)
 
 
 def run_portfolio(cfg: dict, tr: pd.DataFrame, cooldown: int = 0,
                   closes: pd.DataFrame | None = None, slots: int | None = None,
                   crash_slots: int = 0, crash_level: float | None = None) -> tuple[pd.Series, dict]:
-    """slots overrides stage2.max_positions. With crash_slots, a signal whose
-    index disparity is <= crash_level may open a position while fewer than
-    crash_slots are held, and gets 1/crash_slots of equity instead of 1/slots."""
+    """krxbt.portfolio.run_portfolio with this repo's stage2 settings. Lowest
+    disparity wins when signals outnumber free slots. slots overrides
+    stage2.max_positions."""
     st = cfg["stage2"]
-    base = int(slots or st["max_positions"])
-    wide = max(base, int(crash_slots or 0))
-    cal = load_calendar(cfg)
-    cal = cal[cal >= pd.Timestamp(cfg["data"]["start"])]
+    cal = _cal(cfg)
     if closes is None:
         closes = _close_panel(cfg, tr["ticker"].astype(str).unique(), cal)
-    day_no = {d: i for i, d in enumerate(cal)}
-    blocked_until: dict[str, int] = {}  # ticker -> last day index still blocked after a stop
-    ledger: list[dict] = []
-    by_entry = {d: g.sort_values("disp") for d, g in tr.groupby("entry_date")}
-    cash = float(st["initial_capital"])
-    pos: dict[str, dict] = {}
-    equity = np.empty(len(cal))
-    prev_eq = cash
-    taken = 0
-    taken_rets: list[float] = []
-    invested_days = 0
-    max_held = 0
-    exposure: list[float] = []  # share of equity in stocks, on days holding anything
-    for i, d in enumerate(cal):
-        # entries at today's open
-        if d in by_entry and len(pos) < wide:
-            for _, t in by_entry[d].iterrows():
-                cap = wide if crash_level is not None and t["idx_disp"] <= crash_level else base
-                if len(pos) >= cap:
-                    continue
-                tk = str(t["ticker"])
-                if tk in pos:  # already holding it: ignore the signal (spec 4.1)
-                    continue
-                if i <= blocked_until.get(tk, -1):  # re-entry cooldown after a stop-loss
-                    continue
-                alloc = min(prev_eq / cap, cash)
-                if alloc <= 0:
-                    break
-                cash -= alloc
-                ledger.append({"ticker": tk, "entry_date": d, "exit_date": t["exit_date"], "alloc": alloc,
-                               "ret": float(t["ret"]), "reason": t["reason"]})
-                pos[tk] = {"alloc": alloc, "entry_px": float(t["entry_px"]),
-                           "exit_date": t["exit_date"], "ret": float(t["ret"]), "reason": t["reason"]}
-                taken += 1
-                taken_rets.append(float(t["ret"]))
-        max_held = max(max_held, len(pos))
-        # exits during today
-        for tk in [k for k, p in pos.items() if p["exit_date"] <= d]:
-            p = pos.pop(tk)
-            cash += p["alloc"] * (1 + p["ret"])
-            if cooldown and p["reason"] == "stop":
-                blocked_until[tk] = day_no.get(p["exit_date"], i) + cooldown
-        # mark to market at close
-        row = closes.loc[d]
-        val = 0.0
-        for tk, p in pos.items():
-            c = row.get(tk)
-            val += p["alloc"] * (c / p["entry_px"] if pd.notna(c) else 1.0)
-        prev_eq = cash + val
-        equity[i] = prev_eq
-        invested_days += bool(pos)
-        if pos:
-            exposure.append(val / prev_eq)
-    eq = pd.Series(equity, index=cal, name="equity")
-    eq.attrs["ledger"] = pd.DataFrame(ledger)
-    return eq, {"trades_taken": taken, "trades_available": len(tr),
-                "taken_mean_ret": float(np.mean(taken_rets)) if taken_rets else np.nan,
-                "all_mean_ret": float(tr["ret"].mean()),
-                "invested_share": invested_days / len(cal), "max_held": max_held,
-                "exposure": float(np.mean(exposure)) if exposure else 0.0}
-
-
-def stats(eq: pd.Series) -> dict:
-    years = (eq.index[-1] - eq.index[0]).days / 365.25
-    total = eq.iloc[-1] / eq.iloc[0] - 1
-    return {
-        "total_return": total,
-        "cagr": (1 + total) ** (1 / years) - 1 if total > -1 else -1.0,
-        "mdd": (eq / eq.cummax() - 1).min(),
-    }
+    return kp.run_portfolio(cal, tr, closes, st["initial_capital"], int(slots or st["max_positions"]),
+                            rank_by="disp", cooldown=cooldown, crash_slots=crash_slots, crash_level=crash_level)
 
 
 def kospi_curve(cfg: dict, cal: pd.DatetimeIndex, capital: float) -> pd.Series:
-    c = load_index(cfg, "KOSPI")["close"].reindex(cal).ffill()
-    return c / c.iloc[0] * capital
+    return kp.index_curve(cfg, cal, capital, "KOSPI")
 
 
 def _label(rank, c) -> str:
@@ -222,8 +153,7 @@ def main() -> None:
     top = top_combos(cfg)
     sel = compare_selection(cfg)
     cand = candidate_trades(cfg, list(top["combo"].astype(int)) + list(sel.index))
-    cal = load_calendar(cfg)
-    cal = cal[cal >= pd.Timestamp(cfg["data"]["start"])]
+    cal = _cal(cfg)
     closes = _close_panel(cfg, cand["ticker"].astype(str).unique(), cal)
     print(f"candidates: {len(cand):,} trades over {cand['ticker'].nunique()} tickers")
 

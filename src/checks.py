@@ -16,10 +16,10 @@ import random
 
 import numpy as np
 import pandas as pd
+from krxbt.frame import index_features, ticker_frame
 
 from .common import load_calendar, load_config, load_prices, results_dir
 from .grid import combos, universe_tickers
-from .indicators import index_features, ticker_frame
 from .simulate import net_return, simulate
 
 
