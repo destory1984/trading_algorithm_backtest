@@ -139,7 +139,7 @@ FinanceDataReader 가 쓰는 네이버 주소는 최근 3,000 거래일(약 12�
 ## 돌리는 법
 
 ```
-pip install -r requirements.txt   # 엔진 krxbt v0.1.0 을 깃허브에서 받는다. 엔진을 같이 고칠 땐 pip install -e ../krx_backtest_core
+pip install -r requirements.txt   # 엔진 krxbt v0.2.0 을 깃허브에서 받는다. 엔진을 같이 고칠 땐 pip install -e ../krx_backtest_core
 python -m krxbt.fetch      # 시세 수집 → ../krx_data. 처음엔 약 35분(3,243개, 요청 사이 0.3초). 다시 돌리면 새 날짜만 받는다
 python -m src.grid         # 1,440개 조합 시뮬레이션과 요약
 python -m src.checks       # 검증 체크리스트

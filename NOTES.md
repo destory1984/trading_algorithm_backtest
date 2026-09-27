@@ -10,9 +10,9 @@
 - `destory1984/bnf_backtest`(공개). 09-27 에 `5f2766d` 까지 올렸고, 그 뒤 커밋(NOTES, 폭락일 자리 늘리기, 엔진 분리)은 올릴지 사용자에게 묻는다.
 - **09-27 엔진 분리**: 사용자가 「알고리즘마다 따로 깃허브에 올리고 데이터는 같이 쓰고 싶다」 해서 셋으로 나눴다.
   - `../krx_data` — 시세(3,243종목 2007~, 260MB). 원래 이 저장소 `data/` 에 있던 것을 옮겼다. 어느 저장소에도 안 올린다.
-  - `../krx_backtest_core` — 엔진 `krxbt` (수집, 거르는 규칙, numba 매매 커널, 비용, 포트폴리오). `destory1984/krx_backtest_core`(공개), 태그 v0.1.0.
+  - `../krx_backtest_core` — 엔진 `krxbt` (수집, 거르는 규칙, numba 매매 커널, 비용, 포트폴리오). `destory1984/krx_backtest_core`(공개), 태그 v0.1.0(분리), v0.2.0(미국).
   - 이 저장소 — 이격도 규칙(`src/simulate.py` 의 `candidates`·`target`), 그리드, 검증, 보고서, 다이버전스.
-  - 이 PC 에는 엔진이 `pip install -e ../krx_backtest_core` 로 깔려 있다. `requirements.txt` 는 깃허브 태그 v0.1.0 을 가리킨다.
+  - 이 PC 에는 엔진이 `pip install -e ../krx_backtest_core` 로 깔려 있다. `requirements.txt` 는 깃허브 태그 v0.2.0 을 가리킨다.
   - 엔진 커널은 익절 조건을 `c >= ma` 고정 대신 불리언 배열 `target` 으로 받는다. 분리 전후로 results/ 의 csv·parquet·md 가 모두 같았다(검증 방법 아래).
   - 엔진을 고치면 태그를 올리고(v0.2.0 …) 알고리즘 저장소 requirements 를 옮길지 따로 정한다. 옛 결과를 재현하려면 옛 태그로 설치한다.
 - `results/` 는 로컬에만 있다. 다시 만들려면 README 「돌리는 법」 순서로 돌린다 (수집 35분, 그리드 3분, 포트폴리오 몇 분).
