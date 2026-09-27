@@ -57,6 +57,7 @@ def ticker_frame(cfg: dict, ticker: str, market: str, cal: pd.DatetimeIndex,
     f["market"] = market
     f = f.join(idx[market][["idx_regime", "idx_disp"]], how="left")
     f["idx_regime"] = f["idx_regime"].fillna(False).astype(bool)
+    f["idx_crash"] = (f["idx_disp"] <= ind["index_disparity_crash"]).fillna(False).astype(bool)
 
     liquid = f["avg_value"] >= uni["min_avg_value"]
     listed = f["listing_days"] >= uni["min_listing_days"]

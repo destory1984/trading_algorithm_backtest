@@ -112,7 +112,7 @@ def main() -> None:
     top = top_combos(cfg)
     curves, rows = {}, []
     for rank, (_, c) in enumerate(top.iterrows(), 1):
-        label = f"#{rank} {c['market']} ≤{c['threshold']} "                 f"{'손절없음' if pd.isna(c['stop']) else format(c['stop'], '.0%')} {int(c['hold'])}일"
+        label = f"#{rank} {c['market']} ≤{c['threshold']} "                 f"{'손절없음' if pd.isna(c['stop']) else format(c['stop'], '.0%')} {int(c['hold'])}일"                 f"{ {'none': '', 'uptrend': ' 상승장만', 'crash': ' 동반급락만'}.get(c['market_filter'], '') }"
         tr = combo_trades(trades, int(c["combo"]), c["market"])
         eq, info = run_portfolio(cfg, tr)
         curves[label] = eq

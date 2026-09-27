@@ -144,7 +144,7 @@ def main() -> None:
         f = ticker_frame(cfg, t, tk.loc[t, "market"], cal, idx, bool(tk.loc[t, "delisted"]))
         for thr, stop, hold in cases:
             ref = reference_trades(f, cfg, thr, stop, hold)
-            sim = simulate(f, cfg, thr, stop, hold, False)
+            sim = simulate(f, cfg, thr, stop, hold, "none")
             simt = [(r.signal_date, r.entry_date, r.exit_date, r.entry_px, r.exit_px, round(r.ret, 10), r.reason)
                     for r in sim.itertuples()]
             ok = len(ref) == len(simt) and all(

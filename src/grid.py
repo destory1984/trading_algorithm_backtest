@@ -1,6 +1,6 @@
 """Stage 4: run every parameter combination on every ticker and summarise.
 
-Simulation runs once per (regime filter, threshold, stop, hold) = 192 combos
+Simulation runs once per (market filter, threshold, stop, hold) = 288 combos
 per ticker. The market axis (KOSPI / KOSDAQ / ALL) is a filter on the result,
 so trades.parquet holds each trade once.
 
@@ -21,13 +21,13 @@ import pandas as pd
 
 from .common import load_calendar, load_config, load_universe, price_dir, results_dir
 from .indicators import index_features, ticker_frame
-from .simulate import arrays, simulate
+from .simulate import arrays, candidates, simulate
 
 
 def combos(cfg: dict) -> pd.DataFrame:
     g = cfg["grid"]
-    rows = list(itertools.product(g["regime_filter"], g["thresholds"], g["stops"], g["holds"]))
-    df = pd.DataFrame(rows, columns=["regime_filter", "threshold", "stop", "hold"])
+    rows = list(itertools.product(g["market_filter"], g["thresholds"], g["stops"], g["holds"]))
+    df = pd.DataFrame(rows, columns=["market_filter", "threshold", "stop", "hold"])
     df.index.name = "combo"
     return df
 
@@ -62,19 +62,18 @@ def _run_ticker(args):
     out, counts = [], []
     for cid, c in cmb.iterrows():
         stop = None if pd.isna(c["stop"]) else float(c["stop"])
-        tr = simulate(f, cfg, c["threshold"], stop, int(c["hold"]), bool(c["regime_filter"]), a)
+        tr = simulate(f, cfg, c["threshold"], stop, int(c["hold"]), c["market_filter"], a)
         if len(tr):
             tr.insert(0, "combo", np.int16(cid))
             out.append(tr)
-    for rf in cfg["grid"]["regime_filter"]:
+    for mf in cfg["grid"]["market_filter"]:
         for thr in cfg["grid"]["thresholds"]:
-            cand = a["eligible"] & (a["disp"] <= thr) & (a["regime"] if rf else True)
-            counts.append((rf, thr, int(cand.sum())))
+            counts.append((mf, thr, int(candidates(a, thr, mf).sum())))
     trades = pd.concat(out, ignore_index=True) if out else None
     if trades is not None:
         trades.insert(1, "ticker", ticker)
         trades.insert(2, "market", market)
-    cnt = pd.DataFrame(counts, columns=["regime_filter", "threshold", "signals"])
+    cnt = pd.DataFrame(counts, columns=["market_filter", "threshold", "signals"])
     cnt["ticker"], cnt["market"] = ticker, market
     return trades, cnt
 
@@ -151,7 +150,7 @@ def summarize(cfg: dict, df: pd.DataFrame | None = None) -> pd.DataFrame:
 
     years = (load_calendar(cfg)[-1] - pd.Timestamp(cfg["data"]["start"])).days / 365.25
     cnt = pd.read_parquet(rd / "signal_counts.parquet")
-    cnt = with_all_market(cnt).groupby(["regime_filter", "threshold", "market"])["signals"].sum()
+    cnt = with_all_market(cnt).groupby(["market_filter", "threshold", "market"])["signals"].sum()
 
     ev_year = df.groupby(keys + ["year"])["ret"].mean().unstack("year")
     ev_year.columns = [f"ev_{y}" for y in ev_year.columns]
@@ -164,10 +163,10 @@ def summarize(cfg: dict, df: pd.DataFrame | None = None) -> pd.DataFrame:
     s = s.join(ev_year).join(pd.DataFrame(crash))
 
     s = s.reset_index().join(cmb, on="combo")
-    s["signals"] = [cnt.get((rf, th, m), 0) for rf, th, m in zip(s["regime_filter"], s["threshold"], s["market"])]
+    s["signals"] = [cnt.get((rf, th, m), 0) for rf, th, m in zip(s["market_filter"], s["threshold"], s["market"])]
     s["signals_per_year"] = s["signals"] / years
     s["trades_per_year"] = s["trades"] / years
-    front = ["combo", "market", "regime_filter", "threshold", "stop", "hold", "signals", "signals_per_year",
+    front = ["combo", "market", "market_filter", "threshold", "stop", "hold", "signals", "signals_per_year",
              "trades", "trades_per_year", "rebound_rate", "win_rate", "mean_ret", "median_ret", "avg_win",
              "avg_loss", "payoff", "expectancy", "avg_hold", "worst"]
     s = s[front + [c for c in s.columns if c not in front]]
@@ -185,7 +184,7 @@ def main() -> None:
     cfg = load_config()
     df = None if a.summary_only else run_all(cfg, a.limit)
     s = summarize(cfg, df)
-    cols = ["market", "regime_filter", "threshold", "stop", "hold", "trades", "rebound_rate", "win_rate",
+    cols = ["market", "market_filter", "threshold", "stop", "hold", "trades", "rebound_rate", "win_rate",
             "expectancy", "median_ret", "avg_hold", "worst"]
     pd.set_option("display.width", 200)
     print(s[s["trades"] >= cfg["stage2"]["min_trades"]].head(15)[cols].round(4).to_string(index=False))

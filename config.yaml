@@ -45,7 +45,8 @@ grid:
   thresholds: [95, 90, 85, 80, 75, 70]
   stops: [null, -0.05, -0.08, -0.12]
   holds: [3, 5, 10, 20]
-  regime_filter: [false, true]
+  # 시장 필터. none = 없음, uptrend = 지수 종가 > 지수 120일선, crash = 신호일 지수 이격도 <= index_disparity_crash (시장 동반 급락)
+  market_filter: [none, uptrend, crash]
   markets: [KOSPI, KOSDAQ, ALL]
   workers: 6                 # 종목별 병렬 처리 프로세스 수
 

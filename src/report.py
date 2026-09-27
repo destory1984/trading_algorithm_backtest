@@ -29,8 +29,11 @@ def stop_label(s) -> str:
     return "없음" if pd.isna(s) else f"{s:.0%}"
 
 
+FILTER_NAMES = {"none": "없음", "uptrend": "상승장만", "crash": "동반급락만"}
+
+
 def filt_label(v) -> str:
-    return "켬" if v else "끔"
+    return FILTER_NAMES.get(v, str(v))
 
 
 def pct(x, d=2) -> str:
@@ -47,7 +50,7 @@ def md_table(df: pd.DataFrame) -> str:
 
 def combo_name(r) -> str:
     return (f"{r['market']} / 이격도≤{r['threshold']} / 손절 {stop_label(r['stop'])} / "
-            f"보유 {int(r['hold'])}일 / 국면필터 {filt_label(r['regime_filter'])}")
+            f"보유 {int(r['hold'])}일 / 시장필터 {filt_label(r['market_filter'])}")
 
 
 # ---------------------------------------------------------------- heatmaps
@@ -57,10 +60,10 @@ def heatmaps(cfg: dict, s: pd.DataFrame) -> list[str]:
     lim = s.loc[s["trades"] >= min_n, "expectancy"].abs().quantile(0.98) * 100 or 1.0
     files = []
     for m in g["markets"]:
-        for rf in g["regime_filter"]:
+        for rf in g["market_filter"]:
             fig, axes = plt.subplots(1, len(g["stops"]), figsize=(4.2 * len(g["stops"]), 4.6), sharey=True)
             for ax, st in zip(axes, g["stops"]):
-                sub = s[(s["market"] == m) & (s["regime_filter"] == rf)
+                sub = s[(s["market"] == m) & (s["market_filter"] == rf)
                         & ((s["stop"].isna()) if st is None else np.isclose(s["stop"], st))]
                 ev = sub.pivot(index="threshold", columns="hold", values="expectancy").reindex(
                     index=g["thresholds"], columns=g["holds"]) * 100
@@ -82,10 +85,10 @@ def heatmaps(cfg: dict, s: pd.DataFrame) -> list[str]:
                 for sp in ax.spines.values():
                     sp.set_visible(False)
             axes[0].set_ylabel("이격도 기준값")
-            fig.suptitle(f"{m} · 국면필터 {filt_label(rf)} · 거래당 기대값 (비용 포함, 빨강=이익 파랑=손실, "
+            fig.suptitle(f"{m} · 시장필터 {filt_label(rf)} · 거래당 기대값 (비용 포함, 빨강=이익 파랑=손실, "
                          f"* 는 거래 {min_n}건 미만)", fontsize=11)
             fig.tight_layout()
-            name = f"heatmap_{m}_{'filter_on' if rf else 'filter_off'}.png"
+            name = f"heatmap_{m}_{rf}.png"
             fig.savefig(rd / name, dpi=130)
             plt.close(fig)
             files.append(name)
@@ -121,7 +124,7 @@ def neighbours_ev(s: pd.DataFrame, r, cfg: dict) -> float:
     g = cfg["grid"]
     axes = {"threshold": g["thresholds"], "hold": g["holds"],
             "stop": [np.nan if x is None else x for x in g["stops"]]}
-    base = s[(s["market"] == r["market"]) & (s["regime_filter"] == r["regime_filter"])]
+    base = s[(s["market"] == r["market"]) & (s["market_filter"] == r["market_filter"])]
     vals = []
     for ax, lst in axes.items():
         cur = r[ax]
@@ -169,7 +172,7 @@ def main() -> None:
         "## 데이터와 가정", "",
         f"- 기간: {cfg['data']['start']} → {cal[-1].date()} (신호 기준). 거래일 {int((cal >= pd.Timestamp(cfg['data']['start'])).sum()):,}일.",
         f"- 종목: 코스피·코스닥 {usable['ticker'].nunique():,}개. 그중 기간 중 상장폐지 {n_delisted}개 포함. 목록 출처: {src}.",
-        f"- 전체 거래 기록 {len(tr):,}건 (192개 조합 × 종목, 시장 구분은 같은 거래를 나눠 본 것).",
+        f"- 전체 거래 기록 {len(tr):,}건 ({len(cmb)}개 조합 × 종목, 시장 구분은 같은 거래를 나눠 본 것).",
         f"- 비용: 매수·매도 수수료 각 {cfg['costs']['buy_fee']:.3%}, 매도세 {cfg['costs']['sell_tax']:.2%}, "
         f"슬리피지 편도 {cfg['costs']['slippage']:.1%}. 왕복 약 "
         f"{(1 - (1 - cfg['costs']['slippage']) * (1 - cfg['costs']['sell_fee'] - cfg['costs']['sell_tax']) / ((1 + cfg['costs']['slippage']) * (1 + cfg['costs']['buy_fee']))):.2%}.",
@@ -202,7 +205,7 @@ def main() -> None:
             "이 값이 순위 값과 크게 다르면 그 조합은 우연히 좋았을 가능성이 크다.", ""]
 
     # rebound by threshold
-    rb = s[(s["market"] == "ALL") & (~s["regime_filter"]) & (s["stop"].isna())]
+    rb = s[(s["market"] == "ALL") & (s["market_filter"] == "none") & (s["stop"].isna())]
     rbt = rb.pivot(index="threshold", columns="hold", values="rebound_rate").sort_index(ascending=False)
     evt = rb.pivot(index="threshold", columns="hold", values="expectancy").sort_index(ascending=False)
     nt = rb.pivot(index="threshold", columns="hold", values="signals").sort_index(ascending=False).iloc[:, 0]
@@ -213,34 +216,42 @@ def main() -> None:
         tbl[f"반등 {h}일"] = rbt[h].map(lambda x: f"{x:.1%}").values
     for h in evt.columns:
         tbl[f"기대값 {h}일"] = evt[h].map(pct).values
-    out += ["## 이격도 기준값별 반등 확률 (합산, 손절 없음, 국면필터 끔)", "",
+    out += ["## 이격도 기준값별 반등 확률 (합산, 손절 없음, 시장필터 없음)", "",
             "반등 = 최대 보유일 안에 종가가 25일선 이상으로 올라온 비율.", "", md_table(tbl), ""]
 
-    # regime filter
-    piv = s.pivot_table(index=["market", "threshold", "stop", "hold"], columns="regime_filter",
-                        values=["expectancy", "trades"], dropna=False)
-    piv = piv.dropna()
-    both = piv[(piv[("trades", False)] >= min_n) & (piv[("trades", True)] >= min_n)]
-    better = (both[("expectancy", True)] > both[("expectancy", False)])
+    # market filters
+    thr_c = cfg["indicators"]["index_disparity_crash"]
+    piv = s.pivot_table(index=["market", "threshold", "stop", "hold"], columns="market_filter",
+                        values=["expectancy", "trades", "worst"])
     rows = []
-    for m in cfg["grid"]["markets"]:
-        b = both.xs(m, level="market")
-        rows.append({"시장": m, "비교한 조합": len(b),
-                     "필터 켬이 나은 조합": f"{int((b[('expectancy', True)] > b[('expectancy', False)]).sum())}",
-                     "평균 기대값 끔": pct(b[("expectancy", False)].mean()),
-                     "평균 기대값 켬": pct(b[("expectancy", True)].mean()),
-                     "거래 수 비율 (켬/끔)": f"{(b[('trades', True)].sum() / b[('trades', False)].sum()):.0%}"})
-    out += ["## 시장 국면 필터 (지수 > 120일선) 켬 · 끔 비교", "",
-            f"두 경우 모두 거래 {min_n}건 이상인 조합끼리 짝지어 비교했다. 전체 {len(both)}쌍 중 필터를 켠 쪽이 나은 경우 {int(better.sum())}쌍.", "",
+    for mf in [f for f in cfg["grid"]["market_filter"] if f != "none"]:
+        ok = piv[(piv[("trades", "none")] >= min_n) & (piv[("trades", mf)] >= min_n)]
+        for m in cfg["grid"]["markets"]:
+            b = ok.xs(m, level="market")
+            rows.append({"필터": filt_label(mf), "시장": m, "비교한 조합": len(b),
+                         "필터 쪽이 나은 조합": int((b[("expectancy", mf)] > b[("expectancy", "none")]).sum()),
+                         "평균 기대값 없음": pct(b[("expectancy", "none")].mean()),
+                         "평균 기대값 필터": pct(b[("expectancy", mf)].mean()),
+                         "거래 수 비율 (필터/없음)": f"{(b[('trades', mf)].sum() / b[('trades', 'none')].sum()):.0%}"})
+    out += ["## 시장 필터 비교", "",
+            f"- 상승장만: 신호일 지수 종가가 지수 120일선 위일 때만 산다.",
+            f"- 동반급락만: 신호일 지수 이격도(25일선)가 {thr_c} 이하일 때만 산다. 종목 혼자 빠진 날은 거른다.", "",
+            f"필터 없음과 필터 적용 모두 거래 {min_n}건 이상인 조합끼리 짝지어 비교했다.", "",
             md_table(pd.DataFrame(rows)), ""]
     fx = s[(s["stop"].isna()) & (s["hold"] == 10) & (s["market"] == "ALL")]
-    fxp = fx.pivot(index="threshold", columns="regime_filter", values=["expectancy", "trades"]).sort_index(ascending=False)
-    out += ["합산 · 손절 없음 · 보유 10일 기준 세부:", "", md_table(pd.DataFrame({
-        "이격도 기준": [f"≤{t}" for t in fxp.index],
-        "기대값 끔": fxp[("expectancy", False)].map(pct).values,
-        "기대값 켬": fxp[("expectancy", True)].map(pct).values,
-        "거래 끔": fxp[("trades", False)].map("{:,.0f}".format).values,
-        "거래 켬": fxp[("trades", True)].map("{:,.0f}".format).values})), ""]
+    fxp = fx.pivot(index="threshold", columns="market_filter", values=["expectancy", "trades"]).sort_index(ascending=False)
+    det = pd.DataFrame({"이격도 기준": [f"≤{t}" for t in fxp.index]})
+    for mf in cfg["grid"]["market_filter"]:
+        det[f"기대값 {filt_label(mf)}"] = fxp[("expectancy", mf)].map(pct).values
+    for mf in cfg["grid"]["market_filter"]:
+        det[f"거래 {filt_label(mf)}"] = fxp[("trades", mf)].map("{:,.0f}".format).values
+    out += ["합산 · 손절 없음 · 보유 10일 기준 세부:", "", md_table(det), ""]
+    cr = ranked[ranked["market_filter"] == "crash"].head(cfg["report"]["top_n"])
+    out += [f"동반급락 필터 조합 가운데 기대값 상위 {len(cr)}개:", "", md_table(pd.DataFrame({
+        "조합": [combo_name(r) for _, r in cr.iterrows()],
+        "거래 수": cr["trades"].map("{:,}".format), "연평균 거래": cr["trades_per_year"].round(0).astype(int),
+        "승률": cr["win_rate"].map(lambda x: f"{x:.1%}"), "기대값": cr["expectancy"].map(pct),
+        "중앙값": cr["median_ret"].map(pct), "최악": cr["worst"].map(lambda x: pct(x, 1))})), ""]
 
     # yearly
     top5 = ranked.head(st2["top_n"])
@@ -342,7 +353,7 @@ def main() -> None:
         out += [ck.read_text(encoding="utf-8").replace("\n## ", "\n### ").replace("# 검증 체크리스트 결과", "## 검증 체크리스트"), ""]
     out += ["## 읽을 때 주의할 점", "",
             "- 과거 성과가 미래 수익을 보장하지 않는다.",
-            "- 576개 조합 중 1등을 고르면 운이 좋았던 조합을 고를 위험이 크다. 주변 조합 기대값과 학습·검증 비교를 같이 본다.",
+            f"- {len(cmb) * len(cfg['grid']['markets'])}개 조합 중 1등을 고르면 운이 좋았던 조합을 고를 위험이 크다. 주변 조합 기대값과 학습·검증 비교를 같이 본다.",
             "- 소형주는 호가가 비어 있어 실제 체결이 슬리피지 가정(편도 0.1%)보다 나쁠 수 있다.",
             "- 거래대금은 종가 × 거래량으로 어림했다.", ""]
     (rd / "report.md").write_text("\n".join(out), encoding="utf-8")

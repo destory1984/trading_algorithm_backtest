@@ -1,8 +1,9 @@
 """Stage 3: trade-by-trade simulation for one ticker.
 
 Rules (config.yaml `rules`, `costs`):
-  signal   close disparity <= threshold on an eligible day (and index regime
-           up if the regime filter is on)
+  signal   close disparity <= threshold on an eligible day, plus the market
+           filter: none / uptrend (index close > index MA120) /
+           crash (index disparity <= config index_disparity_crash)
   entry    next trading day's open (option: signal-day close). If the stock is
            halted on that day the signal is skipped.
   exits    checked in this order each priced day, first hit wins:
@@ -18,7 +19,7 @@ Rules (config.yaml `rules`, `costs`):
   at the last traded close, reason "forced".
   While a position is open, new signals on that ticker are ignored.
 
-Usage:  python -m src.simulate 005930 [threshold] [stop] [hold]
+Usage:  python -m src.simulate 005930 [threshold] [stop] [hold] [none|uptrend|crash]
         prints every trade with the bars around it, for hand checking.
 """
 from __future__ import annotations
@@ -130,16 +131,22 @@ def arrays(f: pd.DataFrame) -> dict:
     return {k: f[k].to_numpy(np.float64) for k in ("open", "high", "low", "close", "ma", "disp", "idx_disp")} | {
         "valid": f["valid"].to_numpy(np.bool_),
         "eligible": f["eligible"].to_numpy(np.bool_),
-        "regime": f["idx_regime"].to_numpy(np.bool_),
+        "uptrend": f["idx_regime"].to_numpy(np.bool_),
+        "crash": f["idx_crash"].to_numpy(np.bool_),
     }
 
 
-def simulate(f: pd.DataFrame, cfg: dict, threshold: float, stop: float | None, hold: int,
-             regime_filter: bool, a: dict | None = None) -> pd.DataFrame:
-    a = a or arrays(f)
+def candidates(a: dict, threshold: float, market_filter: str) -> np.ndarray:
     cand = a["eligible"] & (a["disp"] <= threshold)
-    if regime_filter:
-        cand &= a["regime"]
+    if market_filter != "none":
+        cand &= a[market_filter]
+    return cand
+
+
+def simulate(f: pd.DataFrame, cfg: dict, threshold: float, stop: float | None, hold: int,
+             market_filter: str = "none", a: dict | None = None) -> pd.DataFrame:
+    a = a or arrays(f)
+    cand = candidates(a, threshold, market_filter)
     buy_cost, sell_keep = cost_factors(cfg)
     ru = cfg["rules"]
     sig, ent, ext, epx, xpx, ret, rsn, reb = run_kernel(
@@ -168,7 +175,7 @@ def main() -> None:
     from .grid import universe_tickers
     info = universe_tickers(cfg).loc[t]
     f = ticker_frame(cfg, t, info["market"], load_calendar(cfg), index_features(cfg), bool(info["delisted"]))
-    tr = simulate(f, cfg, thr, stop, hold, False)
+    tr = simulate(f, cfg, thr, stop, hold, sys.argv[5] if len(sys.argv) > 5 else "none")
     pd.set_option("display.width", 200)
     print(f"{t} {market} threshold={thr} stop={stop} hold={hold}: {len(tr)} trades")
     print(tr.round(4).to_string())
