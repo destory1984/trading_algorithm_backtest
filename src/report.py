@@ -29,11 +29,12 @@ def stop_label(s) -> str:
     return "없음" if pd.isna(s) else f"{s:.0%}"
 
 
-FILTER_NAMES = {"none": "없음", "uptrend": "상승장만", "crash": "동반급락만"}
-
-
 def filt_label(v) -> str:
-    return FILTER_NAMES.get(v, str(v))
+    if v == "none":
+        return "없음"
+    if v == "uptrend":
+        return "상승장만"
+    return f"동반급락≤{v[5:]}" if v[5:] else "동반급락"
 
 
 def pct(x, d=2) -> str:
@@ -220,7 +221,6 @@ def main() -> None:
             "반등 = 최대 보유일 안에 종가가 25일선 이상으로 올라온 비율.", "", md_table(tbl), ""]
 
     # market filters
-    thr_c = cfg["indicators"]["index_disparity_crash"]
     piv = s.pivot_table(index=["market", "threshold", "stop", "hold"], columns="market_filter",
                         values=["expectancy", "trades", "worst"])
     rows = []
@@ -235,7 +235,7 @@ def main() -> None:
                          "거래 수 비율 (필터/없음)": f"{(b[('trades', mf)].sum() / b[('trades', 'none')].sum()):.0%}"})
     out += ["## 시장 필터 비교", "",
             f"- 상승장만: 신호일 지수 종가가 지수 120일선 위일 때만 산다.",
-            f"- 동반급락만: 신호일 지수 이격도(25일선)가 {thr_c} 이하일 때만 산다. 종목 혼자 빠진 날은 거른다.", "",
+            "- 동반급락≤N: 신호일 지수 이격도(25일선)가 N 이하일 때만 산다. 종목 혼자 빠진 날은 거른다.", "",
             f"필터 없음과 필터 적용 모두 거래 {min_n}건 이상인 조합끼리 짝지어 비교했다.", "",
             md_table(pd.DataFrame(rows)), ""]
     fx = s[(s["stop"].isna()) & (s["hold"] == 10) & (s["market"] == "ALL")]
@@ -246,7 +246,7 @@ def main() -> None:
     for mf in cfg["grid"]["market_filter"]:
         det[f"거래 {filt_label(mf)}"] = fxp[("trades", mf)].map("{:,.0f}".format).values
     out += ["합산 · 손절 없음 · 보유 10일 기준 세부:", "", md_table(det), ""]
-    cr = ranked[ranked["market_filter"] == "crash"].head(cfg["report"]["top_n"])
+    cr = ranked[ranked["market_filter"].str.startswith("crash")].head(cfg["report"]["top_n"])
     out += [f"동반급락 필터 조합 가운데 기대값 상위 {len(cr)}개:", "", md_table(pd.DataFrame({
         "조합": [combo_name(r) for _, r in cr.iterrows()],
         "거래 수": cr["trades"].map("{:,}".format), "연평균 거래": cr["trades_per_year"].round(0).astype(int),
@@ -322,6 +322,21 @@ def main() -> None:
                 f"초기 자본 {st2['initial_capital'] / 1e8:.0f}억 원, 동시 보유 최대 {st2['max_positions']}종목, "
                 "새 종목에 전날 평가금액의 1/5 을 넣는다. 같은 날 신호가 빈 자리보다 많으면 이격도가 낮은 종목부터 산다. "
                 "청산한 자리는 다음 날부터 쓴다.", "", md_table(pt), "", "![자본 곡선](portfolio_equity.png)", ""]
+
+    pf = rd / "portfolio_filters.csv"
+    if pf.exists() and st2.get("compare_combo"):
+        cc = st2["compare_combo"]
+        f = pd.read_csv(pf)
+        out += [f"같은 조합({cc['market']} / 이격도≤{cc['threshold']} / 손절 {stop_label(cc.get('stop'))} / "
+                f"보유 {cc['hold']}일)을 시장 필터만 바꿔 돌린 결과:", "", md_table(pd.DataFrame({
+                    "시장 필터": [filt_label(x) if x != "KOSPI buy&hold" else "KOSPI 지수 보유" for x in f["filter"]],
+                    "연환산": f["cagr"].map(lambda x: f"{x:+.1%}"),
+                    "MDD": f["mdd"].map(lambda x: f"{x:.1%}"),
+                    f"연환산 ~{st2['train_end'][:4]}": f["cagr_train"].map(lambda x: f"{x:+.1%}"),
+                    f"연환산 {int(st2['train_end'][:4]) + 1}~": f["cagr_test"].map(lambda x: f"{x:+.1%}"),
+                    "체결한 거래": f.get("trades_taken", pd.Series(dtype=float)).map(lambda x: "" if pd.isna(x) else f"{int(x):,}"),
+                    "보유 중인 날 비율": f.get("invested_share", pd.Series(dtype=float)).map(lambda x: "" if pd.isna(x) else f"{x:.0%}"),
+                })), ""]
 
     # train / test
     te = st2["train_end"]

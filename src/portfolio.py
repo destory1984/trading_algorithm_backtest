@@ -18,6 +18,14 @@ import pandas as pd
 from .common import load_calendar, load_config, load_index, load_prices, results_dir
 
 
+def filter_label(v: str) -> str:
+    if v == "none":
+        return "필터없음"
+    if v == "uptrend":
+        return "상승장만"
+    return f"동반급락≤{v[5:]}" if v[5:] else "동반급락"
+
+
 def top_combos(cfg: dict, s: pd.DataFrame | None = None) -> pd.DataFrame:
     s = s if s is not None else pd.read_csv(results_dir() / "grid_summary.csv")
     s = s[s["trades"] >= cfg["stage2"]["min_trades"]]
@@ -112,7 +120,8 @@ def main() -> None:
     top = top_combos(cfg)
     curves, rows = {}, []
     for rank, (_, c) in enumerate(top.iterrows(), 1):
-        label = f"#{rank} {c['market']} ≤{c['threshold']} "                 f"{'손절없음' if pd.isna(c['stop']) else format(c['stop'], '.0%')} {int(c['hold'])}일"                 f"{ {'none': '', 'uptrend': ' 상승장만', 'crash': ' 동반급락만'}.get(c['market_filter'], '') }"
+        stop = "손절없음" if pd.isna(c["stop"]) else format(c["stop"], ".0%")
+        label = f"#{rank} {c['market']} ≤{c['threshold']} {stop} {int(c['hold'])}일 {filter_label(c['market_filter'])}"
         tr = combo_trades(trades, int(c["combo"]), c["market"])
         eq, info = run_portfolio(cfg, tr)
         curves[label] = eq
@@ -124,6 +133,30 @@ def main() -> None:
     rows.append({"combo": -1, "market": "KOSPI buy&hold", **stats(ks)})
     pd.DataFrame(curves).to_csv(rd / "portfolio_equity.csv")
     pd.DataFrame(rows).to_csv(rd / "portfolio_summary.csv", index=False, encoding="utf-8-sig")
+    compare_filters(cfg, trades, cal)
+
+
+def compare_filters(cfg: dict, trades: pd.DataFrame, cal: pd.DatetimeIndex) -> None:
+    """Run one fixed combo under every market filter (stage2.compare_combo)."""
+    cc = cfg["stage2"].get("compare_combo")
+    if not cc:
+        return
+    from .grid import combos
+    cmb = combos(cfg)
+    stop = cc.get("stop")
+    sel = cmb[(cmb["threshold"] == cc["threshold"]) & (cmb["hold"] == cc["hold"])
+              & (cmb["stop"].isna() if stop is None else np.isclose(cmb["stop"], stop))]
+    te = pd.Timestamp(cfg["stage2"]["train_end"])
+    rows = []
+    for cid, c in sel.iterrows():
+        eq, info = run_portfolio(cfg, combo_trades(trades, int(cid), cc["market"]))
+        rows.append({"filter": c["market_filter"], **stats(eq), **info,
+                     "cagr_train": stats(eq[eq.index <= te])["cagr"], "cagr_test": stats(eq[eq.index > te])["cagr"]})
+        print(f"compare {c['market_filter']}: cagr {rows[-1]['cagr']:.3f} mdd {rows[-1]['mdd']:.3f}")
+    ks = kospi_curve(cfg, cal, cfg["stage2"]["initial_capital"])
+    rows.append({"filter": "KOSPI buy&hold", **stats(ks),
+                 "cagr_train": stats(ks[ks.index <= te])["cagr"], "cagr_test": stats(ks[ks.index > te])["cagr"]})
+    pd.DataFrame(rows).to_csv(results_dir() / "portfolio_filters.csv", index=False, encoding="utf-8-sig")
 
 
 if __name__ == "__main__":

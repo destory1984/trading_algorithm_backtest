@@ -3,7 +3,8 @@
 Rules (config.yaml `rules`, `costs`):
   signal   close disparity <= threshold on an eligible day, plus the market
            filter: none / uptrend (index close > index MA120) /
-           crash (index disparity <= config index_disparity_crash)
+           crashNN (index disparity on the signal day <= NN; plain "crash"
+           uses config index_disparity_crash)
   entry    next trading day's open (option: signal-day close). If the stock is
            halted on that day the signal is skipped.
   exits    checked in this order each priced day, first hit wins:
@@ -19,7 +20,7 @@ Rules (config.yaml `rules`, `costs`):
   at the last traded close, reason "forced".
   While a position is open, new signals on that ticker are ignored.
 
-Usage:  python -m src.simulate 005930 [threshold] [stop] [hold] [none|uptrend|crash]
+Usage:  python -m src.simulate 005930 [threshold] [stop] [hold] [none|uptrend|crash97|...]
         prints every trade with the bars around it, for hand checking.
 """
 from __future__ import annotations
@@ -133,13 +134,18 @@ def arrays(f: pd.DataFrame) -> dict:
         "eligible": f["eligible"].to_numpy(np.bool_),
         "uptrend": f["idx_regime"].to_numpy(np.bool_),
         "crash": f["idx_crash"].to_numpy(np.bool_),
+        "idx_disp_raw": f["idx_disp"].to_numpy(np.float64),
     }
 
 
 def candidates(a: dict, threshold: float, market_filter: str) -> np.ndarray:
     cand = a["eligible"] & (a["disp"] <= threshold)
-    if market_filter != "none":
+    if market_filter == "uptrend" or market_filter == "crash":
         cand &= a[market_filter]
+    elif market_filter.startswith("crash"):
+        cand &= a["idx_disp_raw"] <= float(market_filter[5:])  # NaN compares False
+    elif market_filter != "none":
+        raise ValueError(f"unknown market_filter {market_filter!r}")
     return cand
 
 
