@@ -37,8 +37,13 @@ R_TARGET, R_STOP, R_TIME, R_FORCED = 0, 1, 2, 3
 
 @numba.njit(cache=True)
 def run_kernel(o, h, l, c, ma, valid, cand, stop, hold, entry_on_close, target_on_close,
-               buy_cost, sell_keep):
-    """Returns (sig, ent, ext, entry_px, exit_px, ret, reason, rebound)."""
+               buy_cost, sell_keep, independent=False):
+    """Returns (sig, ent, ext, entry_px, exit_px, ret, reason, rebound).
+
+    independent=True turns every candidate signal into its own trade, even
+    while an earlier trade on the ticker is still open. The portfolio uses
+    this and applies "ignore signals while holding" to its real holdings.
+    """
     n = len(c)
     sig = np.empty(n, np.int32)
     ent = np.empty(n, np.int32)
@@ -117,7 +122,8 @@ def run_kernel(o, h, l, c, ma, valid, cand, stop, hold, entry_on_close, target_o
         rsn[k] = r
         reb[k] = rb
         k += 1
-        next_ok = x if at_open else x + 1
+        if not independent:
+            next_ok = x if at_open else x + 1
     return sig[:k], ent[:k], ext[:k], epx[:k], xpx[:k], ret[:k], rsn[:k], reb[:k]
 
 
@@ -163,7 +169,8 @@ def candidates(a: dict, threshold: float, market_filter: str) -> np.ndarray:
 
 
 def simulate(f: pd.DataFrame, cfg: dict, threshold: float, stop: float | None, hold: int,
-             market_filter: str = "none", a: dict | None = None) -> pd.DataFrame:
+             market_filter: str = "none", a: dict | None = None,
+             independent: bool = False) -> pd.DataFrame:
     a = a or arrays(f)
     cand = candidates(a, threshold, market_filter)
     buy_cost, sell_keep = cost_factors(cfg)
@@ -171,7 +178,7 @@ def simulate(f: pd.DataFrame, cfg: dict, threshold: float, stop: float | None, h
     sig, ent, ext, epx, xpx, ret, rsn, reb = run_kernel(
         a["open"], a["high"], a["low"], a["close"], a["ma"], a["valid"], cand,
         stop if stop is not None else 0.0, int(hold),
-        bool(ru["entry_on_signal_close"]), bool(ru["target_exit_on_close"]), buy_cost, sell_keep)
+        bool(ru["entry_on_signal_close"]), bool(ru["target_exit_on_close"]), buy_cost, sell_keep, independent)
     dates = f.index.to_numpy()
     return pd.DataFrame({
         "signal_date": dates[sig], "entry_date": dates[ent], "exit_date": dates[ext],

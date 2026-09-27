@@ -71,6 +71,8 @@ stage2:
   max_positions: 5
   # 이 조합 하나를 시장 필터마다 포트폴리오로 돌려 필터끼리 비교한다
   compare_combo: {market: KOSPI, threshold: 70, stop: -0.08, hold: 20}
+  # 손절로 판 종목은 이 거래일 수만큼 다시 사지 않는다. 0 은 설계서 그대로(제한 없음). compare_combo 에만 적용해 비교한다
+  reentry_cooldowns: [0, 20, 60, 120]
   train_end: "2016-12-31"    # 학습 2008~2016 (9년), 검증 2017~ (약 9.7년)    # 학습 기간 끝. 검증은 그다음 날부터
   crash_periods:
     "2008-10 금융위기": ["2008-09-15", "2008-11-30"]

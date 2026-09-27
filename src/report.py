@@ -325,22 +325,47 @@ def main() -> None:
         out += ["## 포트폴리오 시뮬레이션 (상위 5개 조합)", "",
                 f"초기 자본 {st2['initial_capital'] / 1e8:.0f}억 원, 동시 보유 최대 {st2['max_positions']}종목, "
                 "새 종목에 전날 평가금액의 1/5 을 넣는다. 같은 날 신호가 빈 자리보다 많으면 이격도가 낮은 종목부터 산다. "
-                "청산한 자리는 다음 날부터 쓴다.", "", md_table(pt), "", "![자본 곡선](portfolio_equity.png)", ""]
+                "청산한 자리는 다음 날부터 쓴다. 포트폴리오가 이미 들고 있는 종목의 신호는 버린다(설계서 4.1).", "", md_table(pt), "", "![자본 곡선](portfolio_equity.png)", ""]
 
     pf = rd / "portfolio_filters.csv"
     if pf.exists() and st2.get("compare_combo"):
         cc = st2["compare_combo"]
         f = pd.read_csv(pf)
-        out += [f"같은 조합({cc['market']} / 이격도≤{cc['threshold']} / 손절 {stop_label(cc.get('stop'))} / "
-                f"보유 {cc['hold']}일)을 시장 필터만 바꿔 돌린 결과:", "", md_table(pd.DataFrame({
-                    "시장 필터": [filt_label(x) if x != "KOSPI buy&hold" else "KOSPI 지수 보유" for x in f["filter"]],
-                    "연환산": f["cagr"].map(lambda x: f"{x:+.1%}"),
-                    "MDD": f["mdd"].map(lambda x: f"{x:.1%}"),
-                    f"연환산 ~{st2['train_end'][:4]}": f["cagr_train"].map(lambda x: f"{x:+.1%}"),
-                    f"연환산 {int(st2['train_end'][:4]) + 1}~": f["cagr_test"].map(lambda x: f"{x:+.1%}"),
-                    "체결한 거래": f.get("trades_taken", pd.Series(dtype=float)).map(lambda x: "" if pd.isna(x) else f"{int(x):,}"),
-                    "보유 중인 날 비율": f.get("invested_share", pd.Series(dtype=float)).map(lambda x: "" if pd.isna(x) else f"{x:.0%}"),
-                })), ""]
+        name = (f"{cc['market']} / 이격도≤{cc['threshold']} / 손절 {stop_label(cc.get('stop'))} / 보유 {cc['hold']}일")
+        yr = int(st2["train_end"][:4])
+
+        def cell(r):
+            return f"{r['cagr']:+.1%} / {r['mdd']:.0%}"
+
+        base = f[(f["method"] == "portfolio") & (f["cooldown"] == 0)].set_index("filter")
+        old = f[f["method"] == "grid_list"].set_index("filter")
+        k = f[f["method"] == "index"].iloc[0]
+        rows = [{"시장 필터": filt_label(x), "고치기 전 (연환산 / MDD)": cell(old.loc[x]),
+                 "설계서대로 (연환산 / MDD)": cell(base.loc[x]),
+                 f"~{yr}": f"{base.loc[x, 'cagr_train']:+.1%}", f"{yr + 1}~": f"{base.loc[x, 'cagr_test']:+.1%}",
+                 "체결한 거래": f"{int(base.loc[x, 'trades_taken']):,}",
+                 "보유 중인 날 비율": f"{base.loc[x, 'invested_share']:.0%}"} for x in base.index]
+        rows.append({"시장 필터": "KOSPI 지수 보유", "고치기 전 (연환산 / MDD)": cell(k), "설계서대로 (연환산 / MDD)": cell(k),
+                     f"~{yr}": f"{k['cagr_train']:+.1%}", f"{yr + 1}~": f"{k['cagr_test']:+.1%}",
+                     "체결한 거래": "", "보유 중인 날 비율": "100%"})
+        out += [f"같은 조합({name})을 시장 필터만 바꿔 돌린 결과:", "",
+                "- 고치기 전: 그리드의 종목별 거래 목록을 그대로 썼다. 포트폴리오가 사지 않은 거래가 열려 있는 동안에도 "
+                "같은 종목 신호를 버렸다.",
+                "- 설계서대로: 신호마다 따로 거래를 만들고, 포트폴리오가 실제로 그 종목을 들고 있을 때만 신호를 버린다.", "",
+                md_table(pd.DataFrame(rows)), ""]
+        cds = sorted(f.loc[f["method"] == "portfolio", "cooldown"].unique())
+        if len(cds) > 1:
+            port = f[f["method"] == "portfolio"]
+            tbl = []
+            for x in base.index:
+                row = {"시장 필터": filt_label(x)}
+                for cd in cds:
+                    r = port[(port["filter"] == x) & (port["cooldown"] == cd)].iloc[0]
+                    row["제한 없음" if cd == 0 else f"{cd}거래일"] = cell(r)
+                tbl.append(row)
+            out += [f"손절한 종목 재진입 제한 ({name}, 연환산 / MDD):", "",
+                    "손절로 판 종목은 표의 거래일 수만큼 다시 사지 않는다. 제한 없음이 설계서 그대로다.", "",
+                    md_table(pd.DataFrame(tbl)), ""]
 
     # train / test
     te = st2["train_end"]
