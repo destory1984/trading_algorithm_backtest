@@ -73,6 +73,12 @@ stage2:
   compare_combo: {market: KOSPI, threshold: 70, stop: -0.08, hold: 20}
   # 손절로 판 종목은 이 거래일 수만큼 다시 사지 않는다. 0 은 설계서 그대로(제한 없음). compare_combo 에만 적용해 비교한다
   reentry_cooldowns: [0, 20, 60, 120]
+  # 폭락일에 자리 늘리기. [보통 자리, 폭락일 자리]. 폭락일 자리가 0 이면 늘리지 않는다.
+  # 폭락일 = 신호일 지수 이격도(25일선) <= crash_slots_level. 폭락일 신호는 평가금액의 1/폭락일 자리 만큼 산다
+  # compare_combo 에만 적용하고, slot_cooldowns 의 재진입 제한마다 돌린다
+  slot_variants: [[5, 0], [5, 10], [5, 20], [5, 40], [10, 0], [20, 0]]
+  crash_slots_level: 95
+  slot_cooldowns: [0, 120]
   train_end: "2016-12-31"    # 학습 2008~2016 (9년), 검증 2017~ (약 9.7년)    # 학습 기간 끝. 검증은 그다음 날부터
   crash_periods:
     "2008-10 금융위기": ["2008-09-15", "2008-11-30"]

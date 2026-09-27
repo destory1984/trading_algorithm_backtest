@@ -104,8 +104,14 @@ def _close_panel(cfg: dict, tickers, cal: pd.DatetimeIndex) -> pd.DataFrame:
 
 
 def run_portfolio(cfg: dict, tr: pd.DataFrame, cooldown: int = 0,
-                  closes: pd.DataFrame | None = None) -> tuple[pd.Series, dict]:
+                  closes: pd.DataFrame | None = None, slots: int | None = None,
+                  crash_slots: int = 0, crash_level: float | None = None) -> tuple[pd.Series, dict]:
+    """slots overrides stage2.max_positions. With crash_slots, a signal whose
+    index disparity is <= crash_level may open a position while fewer than
+    crash_slots are held, and gets 1/crash_slots of equity instead of 1/slots."""
     st = cfg["stage2"]
+    base = int(slots or st["max_positions"])
+    wide = max(base, int(crash_slots or 0))
     cal = load_calendar(cfg)
     cal = cal[cal >= pd.Timestamp(cfg["data"]["start"])]
     if closes is None:
@@ -114,25 +120,28 @@ def run_portfolio(cfg: dict, tr: pd.DataFrame, cooldown: int = 0,
     blocked_until: dict[str, int] = {}  # ticker -> last day index still blocked after a stop
     ledger: list[dict] = []
     by_entry = {d: g.sort_values("disp") for d, g in tr.groupby("entry_date")}
-    cash, slots = float(st["initial_capital"]), st["max_positions"]
+    cash = float(st["initial_capital"])
     pos: dict[str, dict] = {}
     equity = np.empty(len(cal))
     prev_eq = cash
     taken = 0
     taken_rets: list[float] = []
     invested_days = 0
+    max_held = 0
+    exposure: list[float] = []  # share of equity in stocks, on days holding anything
     for i, d in enumerate(cal):
         # entries at today's open
-        if d in by_entry and len(pos) < slots:
+        if d in by_entry and len(pos) < wide:
             for _, t in by_entry[d].iterrows():
-                if len(pos) >= slots:
-                    break
+                cap = wide if crash_level is not None and t["idx_disp"] <= crash_level else base
+                if len(pos) >= cap:
+                    continue
                 tk = str(t["ticker"])
                 if tk in pos:  # already holding it: ignore the signal (spec 4.1)
                     continue
                 if i <= blocked_until.get(tk, -1):  # re-entry cooldown after a stop-loss
                     continue
-                alloc = min(prev_eq / slots, cash)
+                alloc = min(prev_eq / cap, cash)
                 if alloc <= 0:
                     break
                 cash -= alloc
@@ -142,6 +151,7 @@ def run_portfolio(cfg: dict, tr: pd.DataFrame, cooldown: int = 0,
                            "exit_date": t["exit_date"], "ret": float(t["ret"]), "reason": t["reason"]}
                 taken += 1
                 taken_rets.append(float(t["ret"]))
+        max_held = max(max_held, len(pos))
         # exits during today
         for tk in [k for k, p in pos.items() if p["exit_date"] <= d]:
             p = pos.pop(tk)
@@ -157,12 +167,15 @@ def run_portfolio(cfg: dict, tr: pd.DataFrame, cooldown: int = 0,
         prev_eq = cash + val
         equity[i] = prev_eq
         invested_days += bool(pos)
+        if pos:
+            exposure.append(val / prev_eq)
     eq = pd.Series(equity, index=cal, name="equity")
     eq.attrs["ledger"] = pd.DataFrame(ledger)
     return eq, {"trades_taken": taken, "trades_available": len(tr),
                 "taken_mean_ret": float(np.mean(taken_rets)) if taken_rets else np.nan,
                 "all_mean_ret": float(tr["ret"].mean()),
-                "invested_share": invested_days / len(cal)}
+                "invested_share": invested_days / len(cal), "max_held": max_held,
+                "exposure": float(np.mean(exposure)) if exposure else 0.0}
 
 
 def stats(eq: pd.Series) -> dict:
@@ -244,6 +257,22 @@ def main() -> None:
             print(f"compare {c['market_filter']} cooldown {cd}: cagr {out[-1]['cagr']:.3f} mdd {out[-1]['mdd']:.3f}")
     out.append({"filter": "KOSPI buy&hold", "method": "index", "cooldown": 0, **_period_row(ks, te)})
     pd.DataFrame(out).to_csv(rd / "portfolio_filters.csv", index=False, encoding="utf-8-sig")
+
+    # more slots on crash days: [normal slots, crash-day slots (0 = same)]
+    lvl = st2.get("crash_slots_level")
+    out = []
+    for cid, c in sel.iterrows():
+        tr = combo_trades(cand, int(cid), mk)
+        for cd in st2.get("slot_cooldowns", [0]):
+            for base, wide in st2.get("slot_variants", []):
+                eq, info = run_portfolio(cfg, tr, cooldown=int(cd), closes=closes, slots=int(base),
+                                         crash_slots=int(wide), crash_level=lvl if wide else None)
+                out.append({"filter": c["market_filter"], "cooldown": int(cd), "slots": int(base),
+                            "crash_slots": int(wide), **_period_row(eq, te), **info})
+                print(f"slots {c['market_filter']} cd {cd} {base}/{wide}: "
+                      f"cagr {out[-1]['cagr']:.3f} mdd {out[-1]['mdd']:.3f}")
+    if out:
+        pd.DataFrame(out).to_csv(rd / "portfolio_slots.csv", index=False, encoding="utf-8-sig")
 
 
 if __name__ == "__main__":

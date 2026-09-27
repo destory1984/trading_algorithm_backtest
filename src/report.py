@@ -367,6 +367,36 @@ def main() -> None:
                     "손절로 판 종목은 표의 거래일 수만큼 다시 사지 않는다. 제한 없음이 설계서 그대로다.", "",
                     md_table(pd.DataFrame(tbl)), ""]
 
+        ps_ = rd / "portfolio_slots.csv"
+        if ps_.exists():
+            sl = pd.read_csv(ps_)
+            lvl = st2.get("crash_slots_level")
+
+            def vname(b, w):
+                return f"{b}자리" if not w else f"{b}→{w}자리"
+
+            out += [f"폭락일에 자리 늘리기 ({name}, 연환산 / MDD):", "",
+                    f"「a→b자리」는 평소 a 자리, 신호일 지수 이격도가 {lvl} 이하인 날은 b 자리까지 산다. "
+                    "폭락일 신호는 평가금액의 1/b 씩 넣는다. 「5자리」가 설계서 그대로다.", ""]
+            for cd in sorted(sl["cooldown"].unique()):
+                tbl = []
+                for x in sl["filter"].unique():
+                    row = {"시장 필터": filt_label(x)}
+                    for _, r in sl[(sl["filter"] == x) & (sl["cooldown"] == cd)].iterrows():
+                        row[vname(r["slots"], r["crash_slots"])] = cell(r)
+                    tbl.append(row)
+                title = "재진입 제한 없음" if cd == 0 else f"손절 뒤 재진입 제한 {cd}거래일"
+                out += [f"{title}:", "", md_table(pd.DataFrame(tbl)), ""]
+            x = sl[(sl["filter"] == "crash95") & (sl["cooldown"] == 0)]
+            if len(x) and "exposure" in x:
+                out += ["동반급락≤95, 재진입 제한 없음의 속사정:", "", md_table(pd.DataFrame({
+                    "자리": [vname(b, w) for b, w in zip(x["slots"], x["crash_slots"])],
+                    "연환산": x["cagr"].map(lambda v: f"{v:+.1%}"), "MDD": x["mdd"].map(lambda v: f"{v:.0%}"),
+                    "체결한 거래": x["trades_taken"].map("{:,.0f}".format),
+                    "체결 거래 평균": x["taken_mean_ret"].map(pct),
+                    "보유 중인 날 주식 비중": x["exposure"].map(lambda v: f"{v:.0%}"),
+                    "최대 동시 보유": x["max_held"].astype(int)})), ""]
+
     # train / test
     te = st2["train_end"]
     a = period_metrics(tr, None, te)
