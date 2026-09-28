@@ -1,0 +1,72 @@
+# IBS 평균회귀 백테스트 설정. 모든 파라미터는 여기서만 바꾼다.
+# IBS = (종가 - 저가) / (고가 - 저가). 고가 = 저가인 날은 ibs.flat_value.
+
+ibs:
+  entry: 0.20                # 보유하지 않은 상태에서 IBS 가 이 값보다 작으면 진입 신호
+  exit: 0.80                 # 보유 중 IBS 가 이 값보다 크면 청산 신호
+  flat_value: 0.5            # 고가 = 저가인 날의 IBS
+
+# 단계 0: 원본 재현 (python -m src.replicate). us_data 가 2007년부터라 여기서만 yfinance 로 따로 받는다
+replicate:
+  ticker: SPY
+  start: "1993-01-01"
+  end_original: "2026-09-11" # 원본 README 의 마지막 날. 이 날까지 잘라 원본 수치와 맞춘다 (포함)
+  original:                  # 원본 README 보고치 (비용 0, 1993-01-29 → 2026-09-11)
+    cagr: 0.1267
+    mdd: -0.2606
+    sharpe: 0.97
+    trades: 989
+    win_rate: 0.6926
+    bh_cagr: 0.1083
+    bh_mdd: -0.5519
+
+data:
+  start: "2008-01-01"        # 엔진에서 신호를 세는 첫날. us_data 가 2007-01-03 부터라 200일선이 차는 뒤로 잡았다
+  end: null                  # null 이면 최근 거래일까지
+
+universe:
+  min_listing_days: 200      # us_data 첫날부터 센 거래일 수. 200일선이 찰 때까지 신호를 막는다
+  avg_value_window: 20
+
+indicators:
+  ma_window: 200             # 추세 필터: 종목 종가 > 자기 200일선 (엔진 frame 의 ma 열)
+  index_ma_window: 200       # 엔진이 요구하는 값. 이 전략은 지수 필터를 쓰지 않는다
+  index_disparity_crash: 95  # 엔진이 요구하는 값. 쓰지 않는다
+  vol_window: 20             # 변동성 목표 사이징의 실현 변동성 기간(거래일)
+
+rules:                       # 체결 방식. 그리드의 exec 값이 이 둘을 덮어쓴다 (close = 둘 다 true, open = 둘 다 false)
+  entry_on_signal_close: true
+  target_exit_on_close: true
+
+us:
+  dir: ../../us_data         # krxbt.fetch_us 로 받은 폴더. 환경변수 US_DATA_DIR 가 있으면 그쪽
+  market_index: SPX          # 엔진이 요구하는 값. 시장 필터는 쓰지 않는다
+  min_avg_value: 2.0e+7      # 20일 평균 거래대금 하한(달러). ETF 넷은 모두 훨씬 크다
+  costs:                     # 국내 증권사 해외주식 수수료(우대 0.07%) 가정. 양도세는 뺐다
+    buy_fee: 0.0007
+    sell_fee: 0.0007
+    sell_tax: 0.0
+    slippage: 0.0005         # 편도
+
+# 단계 2: 돌리기 전에 고정한다. 결과를 보고 바꾸지 않는다
+grid:
+  tickers: [SPY, QQQ, IWM, DIA]
+  entry: [0.10, 0.15, 0.20, 0.25]
+  exit: [0.50, 0.70, 0.80, 0.90]
+  exec: [close, open]
+  trend: [none, ma200]       # ma200 = 신호일 종목 종가 > 자기 200일선
+  max_hold: [null, 5, 10]    # null = 없음. 보유일은 진입일을 1일째로 센다. 넘으면 그날 종가에 판다
+  benchmark: SPY             # 손익분기 비용·비교 기준 보유 종목
+
+portfolio:
+  initial_capital: 100000    # 달러. 종목마다 한 자리(slots=1)로 돌린다
+
+walkforward:
+  first_test_year: 2011      # 첫 검증 해. 학습은 data.start 부터 그 전 해까지
+  min_train_trades: 50       # 학습 기간 거래가 이보다 적은 조합은 고르지 않는다
+
+vol_target:
+  targets: [0.10, 0.15, 0.20] # 연율 목표 변동성. 비중 = min(1, 목표 / 최근 vol_window 일 실현 변동성)
+
+checks:
+  perturb_days: 20           # 미래 데이터 테스트: 마지막 N일 가격을 바꾼다
