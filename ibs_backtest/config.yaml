@@ -70,3 +70,8 @@ vol_target:
 
 checks:
   perturb_days: 20           # 미래 데이터 테스트: 마지막 N일 가격을 바꾼다
+
+# 쉬는 날 SPY 를 일부 들고, 신호 날 전액 (python -m src.park). 설계: docs/superpowers/specs/2026-09-28-index-parking-design.md
+park:
+  ticker: SPY
+  weights: [0.5, 0.7, 0.8, 0.9]   # 쉬는 날 평가금액 중 SPY 비중. 네 값 모두 보이고 하나를 골라내지 않는다

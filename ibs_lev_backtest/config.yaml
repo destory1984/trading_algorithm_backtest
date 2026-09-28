@@ -1,0 +1,112 @@
+# 레버리지 ETF IBS 백테스트 설정. 모든 파라미터는 여기서만 바꾼다.
+# 돌리기 전에 고정했다. 결과를 보고 바꾸지 않는다. 문턱값 그리드는 없다.
+# IBS = (종가 - 저가) / (고가 - 저가). 고가 = 저가인 날은 NaN 이라 신호가 나지 않는다 (원본 방식).
+
+ibs:
+  entry: 0.13                # 보유하지 않은 상태에서 전날 IBS < entry 이면 오늘 시가에 산다
+  exit: 0.5                  # 보유 중 전날 IBS > exit 이면 오늘 시가에 판다
+
+data:
+  start: "2008-01-01"        # 단계 1 표본 시작 (us_data 는 2007-01-03 부터). 레버리지 ETF 는 상장일부터
+  end: "2026-07-31"          # 단계 1~3 마지막 날 (이 날 포함). 단계 0 원본의 --end 2026-07-31 은 이 날을 빼서 07-30 에 끝난다
+
+universe:
+  min_listing_days: 1        # 원본은 상장 첫날 IBS 부터 신호를 낸다. 엔진 기본값(200)이면 첫 200일이 빠진다
+  avg_value_window: 1        # 20 이면 첫 19일이 eligible 에서 빠진다
+
+indicators:
+  ma_window: 1               # 추세 필터가 없다. 엔진 frame 의 ma 가 첫날부터 차도록 1
+  index_ma_window: 200       # 엔진이 요구하는 값. 매매에는 쓰지 않는다
+  index_disparity_crash: 95  # 엔진이 요구하는 값. 쓰지 않는다
+  vol_window: 20             # 변동성 목표 사이징의 실현 변동성 기간(거래일)
+
+rules:                       # exec 값이 덮어쓴다 (open = 둘 다 false, close = 둘 다 true)
+  entry_on_signal_close: false
+  target_exit_on_close: false
+
+us:
+  dir: ../../us_data         # 환경변수 US_DATA_DIR 가 있으면 그쪽
+  market_index: SPX          # 엔진이 요구하는 값. 시장 필터는 쓰지 않는다
+  min_avg_value: 0           # 원본에 거래대금 조건이 없다
+  costs:                     # 국내 증권사 해외주식 수수료(우대 0.07%) 편도
+    buy_fee: 0.0007
+    sell_fee: 0.0007
+    sell_tax: 0.0
+    slippage: 0.0            # 종목별 값은 아래 slippage
+  slippage:                  # 편도. 레버리지 셋은 지시서 값, 1배 ETF 는 지시서에 없어 0
+    TQQQ: 0.0002
+    SPXL: 0.0004
+    SOXL: 0.0004
+    QQQ: 0.0
+    SPY: 0.0
+    SOXX: 0.0
+
+cash:
+  irx_file: irx.parquet      # results/ 안의 ^IRX 캐시 (yfinance)
+  irx_start: "2007-01-01"
+  irx_lag: 1                 # 1 = 전날 ^IRX (지시서). 0 = 같은 날 (원본 패키지). 0 은 crosscheck 에서만 쓴다
+  days_per_year: 252         # 원본과 같이 거래일마다 연율 / 252
+
+claims:
+  tickers: [SPY, QQQ, IWM, DIA, XLF, XLK, XLE, SOXX, EEM, EFA, FXI, TLT, GLD]   # 원본 표와 같은 비레버리지 13개
+  equity: [SPY, QQQ, IWM, DIA, XLF, XLK, XLE, SOXX, EEM, EFA, FXI]
+  non_equity: [TLT, GLD]
+  leveraged: [TQQQ, SPXL, SOXL]
+  bottom_share: 0.20         # 하위 20% = 종목별 표본 IBS 의 20% 분위수 이하
+  buckets: 10
+  gap_tol: 1.0e-9            # |다음 날 시가 / 오늘 종가 - 1| <= 이 값이면 "시가 = 전날 종가" 인 날
+  c1_tickers: [SPY, QQQ]
+  c3_tickers: [SPY, QQQ, SOXX, TQQQ, SPXL, SOXL]
+  index_of: {QQQ: NDX, XLK: NDX, SOXX: NDX, TQQQ: NDX, SOXL: NDX}   # 나머지는 SPX
+  index_ma: 200
+  basket: [QQQ, IWM, TLT, GLD, EEM, XLE]
+  t_strong: 2.0              # 판정 기준. 돌리기 전에 정했다
+  t_weak: 1.0
+  c2_min_equity: 9           # "대부분" = 주식 ETF 11개 중 9개 이상 t > 2 (원본은 11개 중 10개)
+  c5_max_corr: 0.5
+  original:
+    C1: {claim: "IBS 가 낮을수록 다음 날 수익이 높다", value: "SPY +0.088% (t 3.05), QQQ +0.144% (t 3.02)"}
+    C2: {claim: "주식에만 있고 채권·금에는 없다", value: "주식 대부분 t > 2, TLT t 0.89, GLD t -0.78"}
+    C3: {claim: "엣지는 지수가 200일선 아래일 때만 있다", value: "SPY 위 +0.016% (t 0.61), 아래 +0.226% (t 3.38)"}
+    C4: {claim: "반등은 밤사이에 시작한다", value: "하위 20% 날 종가 → 다음 날 시가 t 2.7 ~ 3.6"}
+    C5: {claim: "여러 자산에 나눠 담으면 낙폭이 준다", value: "수익 상관 0.21, 샤프 0.72 → 1.14, 낙폭 -22% → -16%"}
+
+lev:
+  tickers: [TQQQ, SPXL, SOXL]
+  underlying: {TQQQ: QQQ, SPXL: SPY, SOXL: SOXX}
+  exec: [open, close]
+  sizing: [full, "0.2", "0.3", "0.4"]   # full = 전액, 숫자 = 변동성 목표(연율)
+  cash: [zero, irx]
+  costs: [with, zero]        # 48개 조합 x 비용 있음/없음 = 96행
+
+tax:
+  rate: 0.22
+  deduction_krw: 2500000
+  fx: 1350                   # 원/달러 고정 환율. 환율 변동은 무시한다
+  capitals_krw: [30000000, 100000000, 300000000]
+  base_capital_krw: 100000000
+  pay_month: 5               # Y 년 세금은 Y+1 년 5월 첫 거래일에 계좌에서 뺀다. 표본 안에 그 날이 없으면(마지막 해) 마지막 날
+
+stage0:
+  ref_dir: ../../_ref/IBS-Strategy
+  end: "2026-07-31"          # 원본 --end 는 그날을 빼고 (마지막 봉 2026-07-30)
+  cagr_tol: 0.02             # 연 수익률이 2%p 넘게 다르면 원인을 NOTES.md 에 적는다
+  runs:
+    - {name: tqqq_full, label: "TQQQ 실제 2010.2→2026.7 전액", args: "TQQQ", cagr: 0.203, sharpe: 0.78, mdd: -0.392, trades: 392, exposure: 0.162}
+    - {name: tqqq_vt40, label: "TQQQ 실제 2010.2→2026.7 변동성 0.4", args: "TQQQ --position-sizing vol_target --target-vol 0.4", cagr: 0.152, sharpe: 0.86, mdd: -0.345, trades: 392, exposure: 0.162}
+    - {name: tqqq_ext_full, label: "TQQQ 합성 포함 1999.3→2026.7 전액", args: "TQQQ --extend QQQ", cagr: 0.296, sharpe: 0.79, mdd: -0.707, trades: 753, exposure: 0.191}
+    - {name: tqqq_ext_vt40, label: "TQQQ 합성 포함 1999.3→2026.7 변동성 0.4", args: "TQQQ --extend QQQ --position-sizing vol_target --target-vol 0.4", cagr: 0.167, sharpe: 0.87, mdd: -0.345, trades: 753, exposure: 0.191}
+    - {name: spxl_ext_full, label: "SPXL 합성 포함 1993.2→2026.7 전액", args: "SPXL --extend SPY", cagr: 0.226, sharpe: 0.83, mdd: -0.515, trades: null, exposure: 0.187}
+
+crosscheck:                  # 원본 패키지와 같은 조건: TQQQ 실제 구간, 비용 0, ^IRX, 전액, open
+  end: "2026-07-30"          # 원본 --end 2026-07-31 의 마지막 봉
+  capital: 10000             # 원본 기본값
+  max_trade_diff: 0.05       # 거래 수가 5% 넘게 다르면 멈추고 원인을 찾는다
+
+decision:                    # 지시서 「미리 정한 판단 기준」
+  max_mdd: -0.40
+
+checks:
+  perturb_days: 20
+  engine_commit: d371511     # 계획 작성 때 krx_backtest_core 를 마지막으로 바꾼 커밋
+  listing_first: {TQQQ: "2010-02-11", SPXL: "2008-11-05", SOXL: "2010-03-11"}

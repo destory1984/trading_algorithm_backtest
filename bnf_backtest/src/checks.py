@@ -69,6 +69,26 @@ def reference_trades(f: pd.DataFrame, cfg: dict, thr: float, stop: float | None,
     return out
 
 
+def park_section(rd) -> list[str]:
+    out = ["", "## 6. 지수 대기 계산 (python -m src.park [--us] 결과를 읽는다)"]
+    for name, p in (("한국", rd / "park.csv"), ("미국", rd / "us" / "park.csv")):
+        if not p.exists():
+            out.append(f"- {name}: {p.name} 없음. python -m src.park 를 먼저 돌린다")
+            continue
+        x = pd.read_csv(p)
+        c = x[x["parking"] == "현금"]
+        ok = (c["engine_diff"].max() == 0 and x["conserve_diff"].max() < 1e-4
+              and x["min_cash"].min() > -1e-6 and x["min_units"].min() >= 0 and x["nosignal_diff"].max() < 1e-4)
+        out.append(f"- {name}: 대기 끔 = 엔진 {len(c)}줄 최대 차이 {c['engine_diff'].max():.0f}, "
+                   f"지수 가격 1·비용 0 으로 대기를 돌리면 현금 대기 곡선과 최대 차이 {x['conserve_diff'].max():.2e}원"
+                   "(값이 안 변하고 공짜인 자산을 사고팔아 돈이 늘거나 줄면 안 된다는 실제 보존 검산이다. "
+                   "book 합계 - 평가금액은 park_portfolio 안에서 정의상 같은 값이라 따로 보지 않는다), "
+                   f"현금 최소 {x['min_cash'].min():.2e}, "
+                   f"지수 단위 최소 {x['min_units'].min():.2e}, 신호 없음 곡선 차이 {x['nosignal_diff'].max():.2e}"
+                   + (" (정상)" if ok else " (오류)"))
+    return out + [""]
+
+
 def main() -> None:
     cfg = load_config()
     rd = results_dir()
@@ -159,6 +179,7 @@ def main() -> None:
             lines.append(f"  - 예: 신호 {r.signal_date.date()} (이격도 {r.disp:.1f}) → 진입 {r.entry_date.date()} "
                          f"시가 {r.entry_px:,.0f} → 청산 {r.exit_date.date()} {r.exit_px:,.0f} ({r.reason}), "
                          f"비용 뺀 수익률 {r.ret:+.2%}")
+    lines += park_section(rd)
     (rd / "checks.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("\n".join(lines))
 

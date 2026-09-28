@@ -165,6 +165,25 @@ def flat_days(cfg: dict, fr: dict[str, pd.DataFrame]) -> list[str]:
     return out + [""]
 
 
+def park_section() -> list[str]:
+    p = results_dir() / "park.csv"
+    out = ["## 지수 대기 계산", ""]
+    if not p.exists():
+        return out + ["- park.csv 없음. python -m src.park 를 먼저 돌린다", ""]
+    x = pd.read_csv(p)
+    ok = (x["w0_diff"].max() < 0.01 and x["w1_diff"].max() < 0.01
+          and x["conserve_idle_diff"].max(skipna=True) < 0.01 and x["conserve_switch_diff"].max(skipna=True) < 0.01
+          and x["min_cash"].min() > -1e-6)
+    return out + [f"- w = 0 곡선과 걸어가며 검증 곡선(포지션 없는 날) 최대 차이 {x['w0_diff'].max():.4f} 달러",
+                  f"- SPY 거래만, w = 1 곡선과 SPY 보유 × (1 - 매수 비용) 최대 차이 {x['w1_diff'].max():.4f} 달러",
+                  "- 대기 자산 값이 항상 1(공짜)이면, 어떤 w 로 그 자산을 대기해도 실제 w = 0 곡선과 같아야 한다"
+                  f"(대기가 현금과 같은 값을 만든다는 실제 보존 검산): 최대 차이 {x['conserve_idle_diff'].max(skipna=True):.4f} 달러",
+                  "- 비용 0 에서 SPY 신호가 났을 때, 들고 있던 w 몫을 그대로 두는 계산과 이름만 다른 동일 가격 종목으로 "
+                  f"전액 갈아타는 계산의 최대 차이 {x['conserve_switch_diff'].max(skipna=True):.4f} 달러 (SPY 거래가 있는 변형만 계산됨. "
+                  "장부(현금 + SPY + 거래 종목 = 평가금액)는 park_equity 안에서 정의상 항상 같아 따로 보지 않는다), "
+                  f"현금 최소 {x['min_cash'].min():.2e}" + (" (정상)" if ok else " (오류)"), ""]
+
+
 def main() -> None:
     cfg = load_config()
     fr = frames(cfg, cfg["grid"]["tickers"])
@@ -177,6 +196,7 @@ def main() -> None:
     out += entry_days(cfg, fr, tr, g)
     out += equity_product(cfg, fr, tr, g)
     out += flat_days(cfg, fr)
+    out += park_section()
     text = "\n".join(out)
     (results_dir() / "checks.md").write_text(text, encoding="utf-8")
     print(text)

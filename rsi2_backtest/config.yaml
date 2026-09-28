@@ -1,0 +1,102 @@
+# RSI(2) 평균회귀 백테스트 설정. 모든 파라미터는 여기서만 바꾼다.
+# 그리드 값은 돌리기 전에 고정했다. 결과를 보고 바꾸지 않는다.
+# 원본: tradeitsimplesolutions/TIS-RSI2-Research. 라이선스가 없어 코드는 복사하지 않고 original.ref_dir 에서만 돌린다.
+
+rsi:
+  period: 2                  # 와일더 RSI: 상승폭·하락폭을 ewm(alpha=1/2, min_periods=2, adjust=False) 로 평균. 하락폭 평균 0 이면 값 없음
+  exit_above: 70             # 청산 rsi70: RSI(2) > 70
+sma_exit: 5                  # 청산 sma5: 종가 > 5일 단순이동평균 (코너스 원전)
+
+original:                    # 단계 0
+  ref_dir: ../../_ref/TIS-RSI2-Research
+  commit: d5fb4c9            # 읽고 돌린 원본 커밋
+  csv: data/QQQ_D1.csv       # 원본 저장소에 들어 있는 데이터. 새로 받지 않는다
+  rsi_thr: 15                # 진입: 전날 RSI(2) < 15 이고 종가 > 200일선이면 오늘 시가
+  sma: 200
+  slippage: 0.0005           # 편도 5bp: 매수가 x 1.0005, 매도가 x 0.9995, 수수료 0
+  is_frac: 0.70               # 표본 앞 70%(행 수) 학습, 뒤 30% 표본 밖
+  first_day: "1999-12-21"    # 원본 표본 첫날 (200일선이 처음 차는 날)
+  is_last: "2018-09-06"
+  oos_first: "2018-09-07"
+  last_day: "2026-09-21"
+  bars: 6727
+  reported:                  # 지시서 표 (원본 README). 비율은 소수로 적었다
+    IS:  {trades: 194, win_rate: 0.660, profit_factor: 1.97, expectancy: 0.0055, cagr: 0.056, mdd: -0.177, exposure: 0.256}
+    OOS: {trades: 93,  win_rate: 0.796, profit_factor: 2.68, expectancy: 0.0079, cagr: 0.092, mdd: -0.117, exposure: 0.264}
+    ALL: {trades: 287, win_rate: 0.707, profit_factor: 2.19, expectancy: 0.0063, cagr: 0.067, mdd: -0.177, exposure: 0.261}
+  reported_digits: {win_rate: 3, profit_factor: 2, expectancy: 4, cagr: 3, mdd: 3, exposure: 3}   # 위 값의 소수 자릿수
+
+data:
+  start: "2008-01-01"        # 엔진에서 신호를 세는 첫날. us_data 가 2007-01-03 부터라 200일선이 찬 뒤로 잡았다
+  end: "2026-09-25"          # 마지막 날(포함). 고정해 두어야 다시 돌려도 같은 보고서가 나온다
+
+universe:
+  min_listing_days: 200      # us_data 첫날부터 센 거래일 수
+  avg_value_window: 20
+
+indicators:
+  ma_window: 200             # 추세 필터: 종목 종가와 자기 200일선 (엔진 frame 의 ma 열)
+  index_ma_window: 200       # 엔진이 요구하는 값. 쓰지 않는다
+  index_disparity_crash: 95  # 엔진이 요구하는 값. 쓰지 않는다
+
+rules:                       # 체결. 그리드의 exec 값이 덮어쓴다 (open = 둘 다 false, close = 둘 다 true)
+  entry_on_signal_close: false
+  target_exit_on_close: false
+
+us:
+  dir: ../../us_data         # 환경변수 US_DATA_DIR 가 있으면 그쪽
+  market_index: SPX          # 엔진이 요구하는 값. 시장 필터는 쓰지 않는다
+  min_avg_value: 2.0e+7      # 20일 평균 거래대금 하한(달러). ETF 넷은 모두 훨씬 크다
+  costs:                     # 그리드 비용: 국내 증권사 해외주식 수수료 편도 0.07% + 슬리피지 편도 0.05%
+    buy_fee: 0.0007
+    sell_fee: 0.0007
+    sell_tax: 0.0
+    slippage: 0.0005
+
+grid:                        # 단계 2. 돌리기 전에 고정. 4 x 3 x 3 x 3 x 2 = 216
+  tickers: [SPY, QQQ, IWM, DIA]
+  rsi_thr: [5, 10, 15]
+  trend: [above, none, below]   # above = 신호일 종가 > 200일선 (원본), none = 필터 없음, below = 종가 < 200일선
+  exit: [green2, sma5, rsi70]   # green2 = 2연속 양봉 (원본), sma5 = 종가 > 5일선, rsi70 = RSI(2) > 70
+  exec: [open, close]           # open = 다음 날 시가 (원본), close = 신호일·청산 조건일 종가
+  costs: [us, orig]             # us = us.costs, orig = 원본 비용 (original.slippage 편도, 수수료 0). 시행 횟수에는 넣지 않는다
+
+portfolio:
+  initial_capital: 100000    # 달러. 종목마다 한 자리(slots=1)
+
+walkforward:
+  first_test_year: 2011      # 첫 검증 해. 학습은 data.start 부터 그 전 해까지 늘어난다
+  min_train_trades: 30       # 학습 기간 거래가 이보다 적은 조합은 고르지 않는다
+
+ibs:                         # 단계 5: 1번 원본 규칙 (1번은 판단 기준을 통과하지 못했다)
+  entry: 0.20
+  exit: 0.80
+  flat_value: 0.5            # 고가 = 저가인 날의 IBS (1번과 같음)
+  exec: open
+
+mix:
+  low_corr: 0.5              # 이 값보다 작으면 "상관이 낮다" (2번 C5 와 같은 문턱)
+
+overfit:
+  trials: {ibs_backtest: 768, ibs_lev_backtest: 48, rsi2_backtest: 216}   # Deflated Sharpe 의 총 시행 횟수 1,032
+  dsr_min: 0.95
+  monkey_runs: 2000
+  monkey_top: 0.05           # 무작위 진입 PF 분포의 상위 5% = 백분위 0.95 이상
+  seed: 42
+
+tax:                         # 2번(ibs_lev_backtest) 단계 3 규칙 그대로
+  rate: 0.22
+  deduction_krw: 2500000
+  fx: 1350                   # 원/달러 고정 환율. 환율 변동은 무시한다
+  capitals_krw: [30000000, 100000000, 300000000]
+  base_capital_krw: 100000000
+  pay_month: 5               # Y 년 세금은 Y+1 년 5월 첫 거래일에 계좌에서 뺀다. 표본 안에 그 날이 없으면(마지막 해) 마지막 날
+
+refs:                        # 보고서 3장에 인용하는 다른 폴더의 결론 (그 폴더 README 에서 옮겼다)
+  bnf: "bnf_backtest 에서는 지수 120일선 위(상승장)에서만 사는 필터가 비교한 216쌍 중 한 쌍도 낫지 않았다."
+  ibs_c3: "2번(ibs_lev_backtest) C3 재측정에서 IBS 신호 다음 날 평균 수익은 지수 200일선 위에서 SPY -0.009%(t -0.30), QQQ +0.023%(t 0.60), 아래에서 SPY +0.329%(t 3.21), QQQ +0.507%(t 4.18)였다."
+
+checks:
+  perturb_days: 20           # 미래 데이터 테스트: 마지막 N일 가격을 바꾼다
+  engine_commit: d371511     # 계획 작성 때 krx_backtest_core 를 마지막으로 바꾼 커밋
+  first_day: "2007-01-03"    # us_data 네 ETF 의 첫날

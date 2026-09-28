@@ -108,3 +108,14 @@ us:
     sell_fee: 0.0007
     sell_tax: 0.0            # SEC 수수료(매도의 0.003% 안팎)는 무시
     slippage: 0.0005         # 편도. 대형주라 한국(0.1%)보다 낮게
+
+# 쉬는 돈을 지수에 넣어 두기 (python -m src.park [--us]). 설계: docs/superpowers/specs/2026-09-28-index-parking-design.md
+park:
+  kr_index: KOSPI            # 코스피 가격 지수(배당 빠짐)
+  us_index: NDX              # 나스닥100 가격 지수(배당 빠짐)
+  kr_costs:                  # 지수 ETF 매매 가정. 편도 수수료 0.015% + 슬리피지 0.005%, ETF 는 매도세 없음
+    buy_fee: 0.00015
+    sell_fee: 0.00015
+    sell_tax: 0.0
+    slippage: 0.00005
+  # 미국은 us.costs 를 그대로 쓴다
