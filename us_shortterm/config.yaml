@@ -1,0 +1,45 @@
+# 미국 단기 전략 1차 선별 설정. 모든 설정은 여기에만 둔다.
+# 지시서(SPEC.md) 5절 그대로다. 다른 점은 경로 두 줄뿐이다: 이 폴더가 모음 저장소 안에 있어 ../ 가 ../../ 가 된다.
+
+data:
+  dir: ../../krx_data        # 한국 데이터 경로. 이 작업에서는 쓰지 않지만 엔진이 키를 요구한다
+  start: "2008-01-02"        # 신호를 세는 첫날
+  screen_end: "2022-12-30"   # 봉인선. 이 날짜 뒤 데이터는 불러온 직후 잘라낸다
+
+us:
+  dir: ../../us_data         # 환경변수 US_DATA_DIR 가 있으면 그쪽
+  market_index: SPX
+  min_avg_value: 2.0e+7      # 20일 평균 거래대금 하한(달러). 네 ETF 모두 넉넉히 넘는다
+  costs:
+    buy_fee: 0.0007          # 국내 증권사 해외주식 수수료 편도 0.07%
+    sell_fee: 0.0007
+    sell_tax: 0.0
+    slippage: 0.0005         # 편도 0.05%
+
+universe:
+  min_listing_days: 25
+  avg_value_window: 20
+
+indicators:
+  ma_window: 25              # ticker_frame이 요구하는 키. 전략 지표는 src/indicators.py에서 따로 계산한다
+  index_ma_window: 120
+  index_disparity_crash: 97
+
+rules:                       # 설정마다 run.py가 복사본을 만들어 덮어쓴다
+  entry_on_signal_close: false
+  target_exit_on_close: false
+
+screen:
+  tickers: [SPY, QQQ, IWM, DIA]
+  hold_max: 10000            # 최대 보유일 없음
+
+pass:                        # 지시서 10절 통과 기준. 결과를 보기 전에 적었다
+  min_etfs: 3                # 4개 중 이 개수 이상에서 연 수익률 > 위험을 맞춘 보유
+  min_trades: 50             # 그 ETF 각각의 거래 수 하한
+  min_breakeven_bp: 10       # 4개 평균 손익분기 비용(편도, bp) 하한
+
+checks:
+  perturb_days: 20           # 미래 데이터 테스트: SPY 의 2022년 마지막 20거래일 가격을 바꾼다
+  perturb_ticker: SPY
+  seed: 42
+  hand_trades: 3             # 전략마다 손으로 대조할 SPY 거래 수
