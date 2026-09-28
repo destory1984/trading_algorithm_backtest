@@ -15,6 +15,7 @@
 | [rsi2_backtest](rsi2_backtest) | RSI(2) 평균회귀(코너스) | SPY·QQQ·IWM·DIA | 후보 아님. 원본 거래 287건은 그대로 재현했지만 3개 판본 모두 보유를 못 이긴다 |
 | [us_shortterm](us_shortterm) | 단기 전략 12개 1차 선별, S1 IBS 2차 심화 | SPY·QQQ·IWM·DIA, 선별 2008 → 2022 | 1차 18개 설정 중 통과 0개. 가장 가까운 S1 IBS(open)도 2차 기준 4개 중 1개만 만족 |
 | [ibs_bear_backtest](ibs_bear_backtest) | IBS 를 자기 200일선 아래에서만 쓴다 | 가설을 만들지 않은 XLF·XLK·XLE·EEM·EFA·FXI, 2008 → 2026 | 후보 아님. 기준 6개 중 3개 만족. 방향은 맞지만(5/6) 같은 낙폭의 보유를 이긴 종목은 FXI 하나다. IBS 는 여기서 멈춘다 |
+| [index_timing_backtest](index_timing_backtest) | 목표 변경: 지수를 들되 수익은 거의 그대로, 낙폭은 크게 줄이기(200일선, 10개월선, 변동성 목표) | SPY, 코스피, 2008 → 2026 | 지시서 초안만 있다(`SPEC_draft.md`). 사용자 승인 전이라 돌리지 않았다 |
 | [krx_backtest_core](krx_backtest_core) | 공용 엔진(`krxbt`) v0.2.1 | | 데이터 받기, 거르는 규칙, 거래·포트폴리오 계산 |
 
 ## 공통 조건
@@ -45,7 +46,7 @@ IBS 는 네 번(ibs_backtest, ibs_lev_backtest, us_shortterm, ibs_bear_backtest)
 1. **폭락일에 돈을 다 거는 bnf 포트폴리오.** 거래 단위 수익은 강한데 자리 5개가 병목이다. 다만 폭락일과 그 반등을 모두 이미 본 데이터라 좋게 나와도 믿기 어렵고, 낙폭도 커질 수 있다.
 2. **실제 수수료 확인.** 해외주식 수수료가 편도 0.07% 보다 낮은 계좌라면 비용의 벽이 낮아진다.
 
-그보다 목표를 다시 정하는 것도 방법이다. 지금까지 결과로는 일봉 단기 규칙으로 지수 보유를 이기기 어렵다. "지수 수익은 그대로 두고 낙폭만 줄이기"라면 bnf 걸어가며 검증(코스피와 연 수익 같고 낙폭 15%p 작음)이 출발점이 될 수 있다.
+목표를 "지수 수익은 그대로 두고 낙폭만 줄이기"로 바꾼 지시서 초안을 [index_timing_backtest/SPEC_draft.md](index_timing_backtest/SPEC_draft.md) 에 썼다. 그 전의 메모: 지금까지 결과로는 일봉 단기 규칙으로 지수 보유를 이기기 어렵다. "지수 수익은 그대로 두고 낙폭만 줄이기"라면 bnf 걸어가며 검증(코스피와 연 수익 같고 낙폭 15%p 작음)이 출발점이 될 수 있다.
 
 ## 돌리는 법
 
