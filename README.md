@@ -15,7 +15,7 @@
 | [rsi2_backtest](rsi2_backtest) | RSI(2) 평균회귀(코너스) | SPY·QQQ·IWM·DIA | 후보 아님. 원본 거래 287건은 그대로 재현했지만 3개 판본 모두 보유를 못 이긴다 |
 | [us_shortterm](us_shortterm) | 단기 전략 12개 1차 선별, S1 IBS 2차 심화 | SPY·QQQ·IWM·DIA, 선별 2008 → 2022 | 1차 18개 설정 중 통과 0개. 가장 가까운 S1 IBS(open)도 2차 기준 4개 중 1개만 만족 |
 | [ibs_bear_backtest](ibs_bear_backtest) | IBS 를 자기 200일선 아래에서만 쓴다 | 가설을 만들지 않은 XLF·XLK·XLE·EEM·EFA·FXI, 2008 → 2026 | 후보 아님. 기준 6개 중 3개 만족. 방향은 맞지만(5/6) 같은 낙폭의 보유를 이긴 종목은 FXI 하나다. IBS 는 여기서 멈춘다 |
-| [index_timing_backtest](index_timing_backtest) | 목표 변경: 지수를 들되 수익은 거의 그대로, 낙폭은 크게 줄이기(200일선, 10개월선, 변동성 목표) | SPY, 코스피, 2008 → 2026 | 6개 모두 탈락. 가장 가까운 미국 변동성 목표는 수익 -1.4%p 에 낙폭 -52% → -30% 였지만 후반(2017 →) 수익이 3.4%p 뒤져 한도를 넘었다 |
+| [index_timing_backtest](index_timing_backtest) | 목표 변경: 지수를 들되 수익은 거의 그대로, 낙폭은 크게 줄이기(200일선, 10개월선, 변동성 목표) | SPY, 코스피, 2008 → 2026 | 6개 모두 탈락. 가장 가까운 미국 변동성 목표는 수익 -1.4%p 에 낙폭 -52% → -30% 였지만 후반(2017 →) 수익이 3.4%p 뒤져 한도를 넘었다. 이 규칙을 앞으로의 데이터로 판정할 기록 장치 지시서 초안(`SPEC2_draft.md`)이 있다(승인 전) |
 | [krx_backtest_core](krx_backtest_core) | 공용 엔진(`krxbt`) v0.2.1 | | 데이터 받기, 거르는 규칙, 거래·포트폴리오 계산 |
 
 ## 공통 조건
