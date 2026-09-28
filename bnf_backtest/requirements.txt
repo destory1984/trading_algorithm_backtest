@@ -1,0 +1,6 @@
+krxbt @ git+https://github.com/destory1984/krx_backtest_core@v0.2.1
+pandas>=2.2
+numpy
+pyarrow
+numba
+matplotlib
