@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "krxbt"
+version = "0.2.1"
+description = "KOSPI/KOSDAQ daily backtest engine: data collection, cleaning rules, trade and portfolio simulation"
+requires-python = ">=3.10"
+dependencies = ["pandas>=2.2", "numpy", "pyarrow", "PyYAML", "requests", "numba", "finance-datareader", "yfinance", "lxml"]
+
+[project.optional-dependencies]
+krx = ["pykrx"]
+
+[tool.setuptools]
+packages = ["krxbt"]
