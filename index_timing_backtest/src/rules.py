@@ -43,9 +43,10 @@ def t2(close: pd.Series, n: int) -> pd.Series:
     return d
 
 
-def t3(close: pd.Series, target: float, window: int, band: float) -> pd.Series:
+def t3(close: pd.Series, target: float, window: int, band: float, we: np.ndarray | None = None) -> pd.Series:
+    """`we` overrides the week-end flags (the live log marks the last bar once its week is over)."""
     vol = close.pct_change().rolling(window, min_periods=window).std(ddof=1) * np.sqrt(252)
-    we = week_end(close.index)
+    we = week_end(close.index) if we is None else we
     d = pd.Series(np.nan, index=close.index)
     cur = 0.0
     for i in np.flatnonzero(we):

@@ -48,3 +48,18 @@ checks:
   perturb_days: 20
   seed: 42
   hand_changes: 3
+
+# 기록 장치 (SPEC2.md, python -m src.live / src.paper). 규칙 값은 rules.T3 를 그대로 쓴다
+live:
+  dir: ../../live_data       # 기록 장치 전용 데이터 폴더. 연구용 us_data 와 따로 둔다. 환경변수 LIVE_DATA_DIR 가 있으면 그쪽
+  ticker: SPY
+  targets: [0.15, 0.12, 0.18]  # 첫 값이 판정 대상, 나머지는 이웃(참고)
+  stale_days: 4              # 마지막 봉이 한국 날짜로 이 일수보다 오래되면 데이터 실패로 본다
+  telegram_env: [TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID]
+  review_days: 252           # 1년 중간 점검(보고만)
+  verdict_days: 504          # 2년 판정
+  verdict:
+    cagr_gap: 0.03           # 기준 1
+    mdd_ratio: 0.70          # 기준 2
+    min_hold_dd: -0.10       # 기준 2 는 보유 낙폭이 이보다 깊었을 때만 판정한다
+
