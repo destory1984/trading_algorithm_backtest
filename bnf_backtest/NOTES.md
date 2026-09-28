@@ -10,7 +10,8 @@
 **저장소와 폴더**
 - 지금 집은 모음 저장소 `destory1984/trading_algorithm_backtest`(공개)다. 알고리즘마다 하위 폴더 하나(`krx_backtest_core/`, `bnf_backtest/`, `ibs_backtest/`).
   처음 이름은 `traing_...` 였고 09-28 에 바꿨다. bnf·엔진은 `git subtree add` 로 옛 커밋 기록째 넣었다.
-- 옛 개별 저장소 `destory1984/bnf_backtest`, `destory1984/krx_backtest_core` 도 공개로 남아 있다(마지막 `5767da9`, `fdb79d0`, 둘 다 MIT).
+- 옛 개별 저장소 `destory1984/bnf_backtest` 는 09-28 에 지우기로 했다. 지우기 전 main 이 `5767da9` 하나뿐(태그 없음)이고 그 커밋이 모음 저장소에 subtree 로 들어 있는 것을 확인했다.
+- 옛 엔진 저장소 `destory1984/krx_backtest_core` 는 공개로 남아 있다(마지막 `fdb79d0`, MIT).
   `requirements.txt` 가 엔진 옛 저장소 태그 v0.2.1 을 가리키므로 엔진 옛 저장소는 지우면 안 된다. ibs 도 같은 주소를 쓴다.
 - PC 에는 모음 폴더 옆에 옛 폴더 `bnf_backtest`, `krx_backtest_core` 가 아직 있다(깃허브와 같은 내용, 커밋 안 한 것 없음). 지울지 사용자에게 묻는다.
   옛 bnf 폴더의 `results/` 는 이 폴더 `results/` 로 복사해 두었다(42개 파일).

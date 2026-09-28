@@ -1,7 +1,7 @@
 # krx_backtest_core
 
 코스피·코스닥 일봉 백테스트 엔진이다. 매매 규칙은 없다. 규칙은 알고리즘마다 따로 저장소를 만들어 그쪽에 둔다.
-이 저장소는 여러 알고리즘이 같은 데이터와 같은 계산 방식을 쓰게 하려고 [bnf_backtest](https://github.com/destory1984/bnf_backtest) 에서 떼어 냈다.
+이 저장소는 여러 알고리즘이 같은 데이터와 같은 계산 방식을 쓰게 하려고 [bnf_backtest](../bnf_backtest) 에서 떼어 냈다.
 
 | 모듈 | 하는 일 |
 |---|---|
