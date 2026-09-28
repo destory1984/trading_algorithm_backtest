@@ -119,3 +119,23 @@ park:
     sell_tax: 0.0
     slippage: 0.00005
   # 미국은 us.costs 를 그대로 쓴다
+
+# 동반급락 규칙 심화 (python -m src.deep.*). 지시서 SPEC2.md. 결과를 보기 전에 적었다
+deep:
+  end: "2026-09-23"          # 봉인선(krx_data 마지막 날). 이 날 뒤 데이터는 불러온 직후 잘라낸다
+  rule: {market: KOSPI, threshold: 70, stop: null, hold: 20, market_filter: crash95}
+  check_stop: -0.08          # 검증 3: 이 손절로 돌리면 portfolio_filters.csv 의 crash95 / 제한 0 행과 같아야 한다
+  check_row: {cagr: 0.098983, mdd: -0.450743}
+  kospi_dividend: 0.017      # 코스피 배당수익률 근사(연). 가격 지수에 날마다 (1.017)^(1/252) - 1 을 더해 총수익 근사로 쓴다
+  trials: {grid: 1440, portfolio_filters: 26, portfolio_slots: 60}   # N = 1,526
+  dsr_min: 0.95
+  monkey_runs: 2000
+  monkey_pct_min: 0.95
+  seed: 42
+  neighbors: {threshold: [80, 75, 70], market_filter: [crash99, crash97, crash95], hold: [10, 20]}
+  neighbors_min: 12          # 18칸 중 낙폭 맞춘 코스피를 이기는 칸 수 하한
+  slippages: [0.001, 0.002, 0.003, 0.005]
+  slippage_pass: 0.003       # 기준 5
+  top_days: [5, 10]          # 이익 집중: 가장 좋은 신호일 수
+  capacity_share: 0.01       # 자리 크기 / 20일 평균 거래대금 이 값을 넘는 거래를 센다
+
