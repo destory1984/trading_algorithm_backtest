@@ -1,0 +1,61 @@
+# IBS 약세장 판본 설정. 모든 값은 여기에만 둔다. 지시서 SPEC.md. 결과를 보기 전에 적었다.
+
+data:
+  dir: ../../krx_data        # 엔진이 키를 요구한다. 쓰지 않는다
+  start: "2008-01-02"        # 신호를 세는 첫날
+  end: "2026-09-25"          # 봉인선. 이 날 뒤 데이터는 불러온 직후 잘라낸다
+
+us:
+  dir: ../../us_data         # 환경변수 US_DATA_DIR 가 있으면 그쪽
+  market_index: SPX
+  min_avg_value: 2.0e+7      # 20일 평균 거래대금 하한(달러)
+  costs:
+    buy_fee: 0.0007          # 국내 증권사 해외주식 수수료 편도 0.07%
+    sell_fee: 0.0007
+    sell_tax: 0.0
+    slippage: 0.0005         # 편도 0.05%
+
+universe:
+  min_listing_days: 25
+  avg_value_window: 20
+
+indicators:
+  ma_window: 200             # ticker_frame 의 ma 열 = 자기 200일선. eligible 이 200일선이 찬 뒤부터가 된다
+  index_ma_window: 200       # 엔진이 요구하는 값. S&P500 국면 민감도에 쓴다
+  index_disparity_crash: 95  # 엔진이 요구하는 값. 쓰지 않는다
+
+rules:                       # 다음 날 시가 진입, 청산 조건 다음 날 시가 청산
+  entry_on_signal_close: false
+  target_exit_on_close: false
+
+rule:
+  ibs_entry: 0.2
+  ibs_exit: 0.8
+  sma: 200                   # 약세장 = 신호일 종가 < 자기 200일 단순이동평균
+  hold_max: 10000            # 최대 보유일 없음
+
+tickers:
+  judged: [XLF, XLK, XLE, EEM, EFA, FXI]
+  reference: [SPY, QQQ, IWM, DIA, SOXX]
+
+trials_before: 1204          # 미국 누적 시행 수(모음 README). 이 폴더 12개를 더해 N = 1,216
+sibling_daily: ../us_shortterm/results/screen/daily.parquet   # V: us_shortterm 1차 일별 수익률(S1 → S8 56개 열만 쓴다)
+
+pass:
+  regime_min: 5              # 기준 1: 아래 평균 > 위 평균인 종목 수
+  min_trades: 30             # 기준 2: 종목마다 약세장 판본 거래 수
+  beat_min: 4                # 기준 3: 낙폭 맞춘 보유를 이기는 종목 수
+  breakeven_bp: 20           # 기준 4: 손익분기 비용 6개 평균(편도 bp)
+  monkey_pct: 0.95           # 기준 5: 무작위 대비 PF 백분위
+  monkey_min: 4              #         그것을 넘는 종목 수
+  dsr_min: 0.95              # 기준 6: 바구니 DSR
+
+monkey:
+  runs: 2000
+  seed: 42
+
+checks:
+  ibs_backtest_trades: ../ibs_backtest/results/grid_trades.parquet
+  ibs_backtest_combo: 126    # SPY 0.2 / 0.8 open, 필터 없음, 최대 보유 없음
+  us_shortterm_metrics: ../us_shortterm/results/deep/metrics.csv
+  hand_trades: 2
