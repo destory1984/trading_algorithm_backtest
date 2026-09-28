@@ -14,6 +14,7 @@
 | [ibs_lev_backtest](ibs_lev_backtest) | IBS 를 레버리지 ETF 에 | TQQQ·SPXL·SOXL | 후보 아님. 18개 조합 모두 1배 ETF 보유보다 샤프가 낮다 |
 | [rsi2_backtest](rsi2_backtest) | RSI(2) 평균회귀(코너스) | SPY·QQQ·IWM·DIA | 후보 아님. 원본 거래 287건은 그대로 재현했지만 3개 판본 모두 보유를 못 이긴다 |
 | [us_shortterm](us_shortterm) | 단기 전략 12개 1차 선별, S1 IBS 2차 심화 | SPY·QQQ·IWM·DIA, 선별 2008 → 2022 | 1차 18개 설정 중 통과 0개. 가장 가까운 S1 IBS(open)도 2차 기준 4개 중 1개만 만족 |
+| [ibs_bear_backtest](ibs_bear_backtest) | IBS 를 자기 200일선 아래에서만 쓴다 | 가설을 만들지 않은 XLF·XLK·XLE·EEM·EFA·FXI, 2008 → 2026 | 지시서 초안만 있다(`SPEC_draft.md`). 사용자 승인 전이라 돌리지 않았다 |
 | [krx_backtest_core](krx_backtest_core) | 공용 엔진(`krxbt`) v0.2.1 | | 데이터 받기, 거르는 규칙, 거래·포트폴리오 계산 |
 
 ## 공통 조건
@@ -40,7 +41,7 @@
 ## 다음 후보
 
 1. **폭락일에 돈을 다 거는 bnf 포트폴리오.** 거래 단위 수익은 강한데 자리 5개가 병목이다. 폭락일에 현금을 그날 신호 수로 나눠 모두 넣는 방식은 아직 안 해 봤다. 다만 새 시행이고, 폭락 며칠에 더 크게 거는 것이라 낙폭도 같이 커질 수 있다.
-2. **IBS 를 200일선 아래에서만 쓰는 판본.** 아직 쓰지 않은 종목(`us_data` 의 EEM, EFA, FXI 등)에서만 판정해야 의미가 있다.
+2. **IBS 를 200일선 아래에서만 쓰는 판본.** 초안을 [ibs_bear_backtest/SPEC_draft.md](ibs_bear_backtest/SPEC_draft.md) 에 썼다. 가설을 만든 SPY·QQQ·IWM·DIA·SOXX 는 참고로만 보고, 약세장 나눔을 아무도 보지 않은 6개 ETF 로만 판정한다. 기준 6개를 미리 고정했다.
 3. **실제 수수료 확인.** 해외주식 수수료가 편도 0.07% 보다 낮은 계좌라면 1차 선별 결과 일부를 다시 볼 만하다.
 
 ## 돌리는 법
