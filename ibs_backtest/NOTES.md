@@ -3,18 +3,36 @@
 2026-09-28 기준. 새 세션이 이 파일과 [README.md](README.md) 만 읽고 이어서 작업할 수 있게 쓴다.
 결과 숫자는 README 와 `results/report.md` 에 있다. 여기는 코드만 봐서는 알 수 없는 판단과 검증 방법을 적는다.
 
+## 인수인계 (09-28, 폴더 정리 전)
+
+사용자가 폴더를 정리하기 전에 ibs 세션이 남긴다. bnf 쪽 인수인계는 `../bnf_backtest/NOTES.md` 맨 위에 있고, 아래는 겹치지 않는 ibs 몫이다.
+
+**한 일**
+- 작업 지시서([SPEC.md](SPEC.md), 사용자가 대화창에 붙여 넣은 원문)의 단계 0~4 와 검증 체크리스트를 다 돌렸다.
+- 결론: 미리 정한 기준 넷 가운데 낙폭 하나만 만족해 신호 알림 후보로 올리지 않는다. 숫자는 README.
+- 처음엔 혼자 쓰는 저장소로 만들었다가(커밋 없음), 사용자 지시로 모음 저장소 `destory1984/trading_algorithm_backtest` 의 `ibs_backtest/` 로 옮겼다.
+  커밋 기록은 모음 저장소의 `a712c9e` 하나다. 깃허브에 올렸다.
+
+**폴더 정리 때 챙길 것**
+1. 엔진 설치: ibs 도 `pip install -e` 로 깔린 엔진을 쓴다. 지금은 모음 폴더 옆 옛 `krx_backtest_core` 를 가리킨다. 옛 폴더를 지우기 전에
+   모음 폴더 안 `krx_backtest_core` 로 다시 깔아야 한다(bnf NOTES 2번과 같은 일). 다시 깐 뒤 `python -m src.grid` 가 돌면 된다.
+2. 데이터: ibs `config.yaml` 은 이미 `us.dir: ../../us_data` 다. `us_data` 를 옮기면 이 값을 같이 고친다(또는 환경변수 `US_DATA_DIR`).
+3. `us_data/watchlist.txt`: 이번에 맨 끝에 주석 한 줄(`# IBS 평균회귀 ...`)과 SPY, QQQ, IWM, DIA 네 줄을 더했다. 그 위는 원래 사용자 관심 종목 그대로다.
+   `fetch_us` 를 한 번 다시 돌려 다른 종목 시세도 2026-09-25 까지 새로 받아졌다.
+4. 세션 작업 폴더였던 빈 `algorithm` 폴더(모음 폴더 옆)가 남아 있다. 세션이 그 안에서 돌고 있어 지우거나 이름을 바꾸지 못했다. 세션을 닫은 뒤 지우면 된다.
+5. `results/` 와 `fetch_us.log` 는 저장소에 없고 이 PC 에만 있다. 지워도 README 「돌리는 법」 순서로 약 5분이면 다시 만들어진다
+   (`results/spy_1993.parquet` 은 단계 0 의 yfinance 캐시).
+
 ## 지금 상태
 
-- 작업 지시서(「IBS 평균회귀 백테스트 작업 지시서」, 2026-09-28, 사용자가 대화창에 붙여 넣음)의 단계 0~4 와 검증 체크리스트를 다 돌렸다.
-- 결론: 미리 정한 기준 넷 가운데 낙폭 하나만 만족해 신호 알림 후보로 올리지 않는다.
-- 2026-09-28 `trading_algorithm_backtest` 저장소의 `ibs_backtest/` 로 올렸다.
+- 단계 0~4 와 검증까지 끝났다. 이어서 할 일은 맨 아래 「다음 할 일 후보」.
 
 ## 폴더 위치
 
 - 알고리즘은 저장소 하나(`destory1984/trading_algorithm_backtest`)에 폴더 하나씩 둔다. 이 폴더는 `trading_algorithm_backtest/ibs_backtest` 이고,
   지시서의 `../us_data` 는 여기서 `../../us_data` 다(`config.yaml` 의 `us.dir`). 시세 폴더는 저장소 밖, 저장소와 같은 층에 둔다.
-- 엔진은 이 PC 에 `pip install -e ../krx_backtest_core` 로 깔려 있고, 그 폴더가 v0.2.1 태그와 같은 코드(LICENSE 만 추가)인 것을 확인했다.
-  `requirements.txt` 는 깃허브 태그 v0.2.1 을 가리킨다. 전역에 태그 버전을 따로 깔면 편집 가능 설치를 덮으니 깔지 않았다.
+- 엔진은 `pip install -e` 로 깔린 것을 쓴다. 09-28 에 그 폴더가 v0.2.1 태그와 같은 코드(LICENSE 만 추가)인 것을 확인했다.
+  `requirements.txt` 는 깃허브 옛 엔진 저장소의 태그 v0.2.1 을 가리킨다. 전역에 태그 버전을 따로 깔면 편집 가능 설치를 덮으니 깔지 않았다.
 
 ## 판단과 이유
 

@@ -60,6 +60,8 @@ python -m src.report        # results/report.md
 
 | 파일 | 하는 일 |
 |---|---|
+| `SPEC.md` | 작업 지시서 원문 (단계, 그리드, 판단 기준) |
+| `NOTES.md` | 판단과 이유, 검증 방법, 인수인계 |
 | `src/replicate.py` | 원본 코드 방식을 단순 반복문으로 다시 짠 것. 엔진과 대조하는 기준 |
 | `src/strategy.py` | IBS 규칙을 krxbt 엔진 배열(`cand`, `target`)로 만든다 |
 | `src/grid.py` | 조합별 거래, 자산곡선(`run_portfolio(slots=1)`), 통계, 손익분기 비용 |
