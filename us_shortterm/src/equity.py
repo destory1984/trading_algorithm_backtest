@@ -101,6 +101,13 @@ def metrics(tr: pd.DataFrame, dates: pd.DatetimeIndex, close: np.ndarray, entry_
     if abs(last - prod) >= CHECK_TOL:
         raise AssertionError(f"curve {last!r} != prod(1+ret) {prod!r}")
     daily0, _ = curve(tr, dates, close, entry_on_close, ZERO_COSTS)
+    return {**summarize(tr, daily, pos, daily0), "curve_last": last, "prod_ret": prod,
+            "curve_check": abs(last - prod) < CHECK_TOL}, daily
+
+
+def summarize(tr: pd.DataFrame, daily: pd.Series, pos: np.ndarray, daily0: pd.Series) -> dict:
+    """The metrics of one stretch: `daily`, `pos`, `daily0` cover the stretch, `tr` are its trades."""
+    ret = tr["ret"].to_numpy(np.float64)
     return {
         "trades": len(tr),
         "win_rate": float((ret > 0).mean()) if len(ret) else np.nan,
@@ -112,7 +119,4 @@ def metrics(tr: pd.DataFrame, dates: pd.DatetimeIndex, close: np.ndarray, entry_
         "exposure": float(pos.mean()),
         "cagr_zero_cost": cagr(daily0),
         "breakeven_bp": breakeven_bp(tr),
-        "curve_last": last,
-        "prod_ret": prod,
-        "curve_check": abs(last - prod) < CHECK_TOL,
-    }, daily
+    }

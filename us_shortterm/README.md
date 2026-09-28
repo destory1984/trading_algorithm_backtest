@@ -38,6 +38,28 @@
 - S9 → S12 는 거래가 많아 비용에 진다. S9 는 비용이 없으면 연 +6.2% (SPY) → +10.6% (IWM) 인데, 비용 포함으로는 연 -40% 안팎이다. 손익분기 비용이 편도 1.3 → 2.2bp 다.
 - close 판본과 open 판본의 연 수익률 차이는 24칸 중 20칸이 ±0.4%p 안이다. 나머지는 S3 QQQ(close 가 0.9%p 낮음)와 S7 SPY, QQQ, IWM(close 가 0.6 → 1.1%p 높음)이다.
 
+## 2차 심화: S1 IBS(open)
+
+1차에서 가장 가까웠던 S1 IBS(open)를 사용자가 2차로 넘겼다. 지시서는 [SPEC2.md](SPEC2.md), 결과는 `results/deep/report.md`, 검증은 `results/deep/checks.md` 다. 기간은 2008-01-02 → 2026-09-25 이고, 2023-01-03 → 2026-09-25 는 ibs_backtest 가 먼저 돌려 본 구간이라 깨끗한 표본 밖이 아니다.
+
+**판정: 신호 알림 후보가 아니다.** 미리 정한 기준 4개 중 1개만 만족했다.
+
+| 기준 (4개 ETF 중 3개 이상) | SPY | QQQ | IWM | DIA | 판정 |
+|---|---|---|---|---|---|
+| 1. Deflated Sharpe ≥ 0.95 (선별 구간, N 1,104) | 0.000 | 0.000 | 0.000 | 0.000 | 불만족 |
+| 2. 무작위 진입 2,000번 대비 PF 백분위 ≥ 0.95 | 1.000 | 0.997 | 1.000 | 1.000 | 만족 |
+| 3. 이미 본 구간 연 수익률 - 위험 맞춘 보유 > 0 | -21.0%p | -29.6%p | -20.1%p | -13.2%p | 불만족 |
+| 4. 이웃 문턱값 25칸 중 13칸 이상이 위험 맞춘 보유를 이김 | 12칸 | 1칸 | 11칸 | 6칸 | 불만족 |
+
+- 무작위로 사고파는 것보다는 확실히 낫다(PF 1.27 → 1.37, 무작위 중앙값 0.84 → 0.92). 신호에 반등 효과는 있다.
+- 하지만 편도 비용 0.12% 에서는 같은 낙폭의 보유를 넘지 못한다. 선별 구간에서 비용이 0 이면 4개 ETF 모두 이기고, 8bp 면 3개, 12bp 면 2개가 이긴다.
+- 2023 → 2026 에는 연 수익률이 -5.0% (IWM) → +2.2% (QQQ) 로, 같은 낙폭의 보유(연 14.3% → 31.9%)보다 13 → 30%p 낮다.
+- Deflated Sharpe 는 V(1차 72개 설정의 샤프 분산)가 S9 → S12 때문에 커서 0 이 나온다. 그것을 뺀 56개로 잡아도 0.23 → 0.34 다.
+- 반등 효과는 지수가 200일선 아래일 때 몰려 있다. 거래당 평균이 200일선 위에서 -0.06 → +0.11%, 아래에서 +0.34 → +0.74% (t 1.5 → 2.8) 다. 보고만 하고 필터로 쓰지 않았다.
+- 쉬는 날 SPY 를 들면 SPY 거래는 연 +4.1% → +10.7% (w 0 → 0.9) 로 오르지만, 같은 평균 비중의 SPY 고정 보유(연 +6.6% → +11.0%)보다 낮다. 다른 ETF 는 SPY 를 사고파는 비용과, 신호 전 하락일에 SPY 를 들고 있는 탓에 오히려 줄어든다.
+
+IBS 는 여기서 멈춘다.
+
 ## 돌리는 법
 
 ```
@@ -45,6 +67,15 @@ pip install -r requirements.txt
 python -m src.screen.run       # 72개 설정 → results/screen/trades_*.parquet, metrics.csv, daily.parquet
 python -m src.screen.report    # → results/screen/report.md, verdicts.csv
 python -m src.screen.checks    # → results/screen/checks.md
+python -m src.deep.holdout     # 2차: 구간별 지표 → results/deep/metrics.csv
+python -m src.deep.overfit     # Deflated Sharpe → dsr.csv
+python -m src.deep.monkey      # 무작위 진입 → monkey.csv
+python -m src.deep.neighbors   # 이웃 문턱값 → neighbors.csv
+python -m src.deep.periods     # 해마다, 국면 → years.csv, regime.csv
+python -m src.deep.costs       # 비용 민감도 → costs.csv
+python -m src.deep.parking     # 쉬는 날 SPY → parking.csv
+python -m src.deep.report      # → results/deep/report.md
+python -m src.deep.checks      # → results/deep/checks.md
 python -m pytest -q tests
 ```
 
@@ -62,4 +93,5 @@ python -m pytest -q tests
 | `src/screen/strategies/` | 전략 하나에 파일 하나 (`s01_ibs.py` → `s12_gap.py`) |
 | `src/screen/bar_sim.py` | 장중 가격에 사는 전략(S10 → S12) 시뮬레이터 |
 | `src/screen/run.py`, `report.py`, `checks.py` | 실행, 보고서, 검증 |
+| `src/deep/` | 2차 심화(SPEC2.md) |
 | `NOTES.md` | 판단과 이유, 돌린 설정 수 |

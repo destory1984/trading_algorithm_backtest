@@ -5,6 +5,8 @@ data:
   dir: ../../krx_data        # 한국 데이터 경로. 이 작업에서는 쓰지 않지만 엔진이 키를 요구한다
   start: "2008-01-02"        # 신호를 세는 첫날
   screen_end: "2022-12-30"   # 봉인선. 이 날짜 뒤 데이터는 불러온 직후 잘라낸다
+  deep_end: "2026-09-25"     # 2차 심화(SPEC2.md)의 봉인선. 다시 돌려도 같은 보고서가 나오게 고정한다
+  holdout_start: "2023-01-01"  # 이미 본 구간의 첫날(이 날 이후 첫 거래일부터)
 
 us:
   dir: ../../us_data         # 환경변수 US_DATA_DIR 가 있으면 그쪽
@@ -43,3 +45,19 @@ checks:
   perturb_ticker: SPY
   seed: 42
   hand_trades: 3             # 전략마다 손으로 대조할 SPY 거래 수
+
+deep:                        # 2차 심화(SPEC2.md). 결과를 보기 전에 적었다
+  rule: {entry: 0.2, exit: 0.8, version: open}
+  trials_before: {ibs_backtest: 768, ibs_lev_backtest: 48, rsi2_backtest: 216, us_shortterm_screen: 72}   # N = 1,104
+  dsr_min: 0.95
+  monkey_runs: 2000
+  monkey_pct_min: 0.95
+  seed: 42
+  neighbors: {entry: [0.10, 0.15, 0.20, 0.25, 0.30], exit: [0.70, 0.75, 0.80, 0.85, 0.90]}
+  neighbors_min: 13          # 25칸 중 위험을 맞춘 보유를 이기는 칸 수 하한
+  min_etfs: 3                # 기준마다 4개 ETF 중 이 개수 이상
+  costs_bp: [0, 5, 8, 12, 20]  # 편도 비용 민감도
+  park_ticker: SPY
+  park_w: [0, 0.5, 0.7, 0.9]
+  regime_ma: 200             # 국면: SPX 종가 > 200일선
+  ibs_backtest_combo: 126    # ibs_backtest/results/combos.csv 의 SPY 0.2 / 0.8 open, 필터 없음, 최대 보유 없음

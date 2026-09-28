@@ -42,9 +42,10 @@ def seal(df: pd.DataFrame, end: pd.Timestamp) -> pd.DataFrame:
 
 
 @contextmanager
-def sealed_loaders(cfg: dict, overrides: dict[str, pd.DataFrame] | None = None):
-    """Inside the block krxbt.us reads sealed tables. `overrides` replaces a ticker's raw price table (checks.py)."""
-    end = screen_end(cfg)
+def sealed_loaders(cfg: dict, overrides: dict[str, pd.DataFrame] | None = None, end: pd.Timestamp | None = None):
+    """Inside the block krxbt.us reads tables sealed at `end` (default data.screen_end). `overrides` replaces a
+    ticker's raw price table (checks.py)."""
+    end = screen_end(cfg) if end is None else pd.Timestamp(end)
     overrides = overrides or {}
 
     def prices(c, ticker):
@@ -58,15 +59,16 @@ def sealed_loaders(cfg: dict, overrides: dict[str, pd.DataFrame] | None = None):
         yield
 
 
-def raw_prices(cfg: dict, ticker: str) -> pd.DataFrame:
+def raw_prices(cfg: dict, ticker: str, end: pd.Timestamp | None = None) -> pd.DataFrame:
     """The sealed raw file (split-adjusted OHLC + adj_close), for hand checks."""
-    return seal(_raw_prices(cfg, ticker), screen_end(cfg))
+    return seal(_raw_prices(cfg, ticker), screen_end(cfg) if end is None else pd.Timestamp(end))
 
 
-def load_frames(cfg: dict, overrides: dict[str, pd.DataFrame] | None = None):
-    """(calendar, {ticker: frame}) for screen.tickers, all sealed."""
-    end = screen_end(cfg)
-    with sealed_loaders(cfg, overrides):
+def load_frames(cfg: dict, overrides: dict[str, pd.DataFrame] | None = None, end: pd.Timestamp | None = None):
+    """(calendar, {ticker: frame}) for screen.tickers, all sealed at `end` (default data.screen_end; the second
+    round passes data.deep_end)."""
+    end = screen_end(cfg) if end is None else pd.Timestamp(end)
+    with sealed_loaders(cfg, overrides, end):
         cal = krxbt.us.load_calendar(cfg)
         idx = krxbt.us.index_features(cfg)
         frames = {t: krxbt.us.ticker_frame(cfg, t, cal, idx) for t in cfg["screen"]["tickers"]}
