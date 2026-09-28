@@ -134,14 +134,14 @@ def report(cfg: dict, s: pd.DataFrame, tr: pd.DataFrame, pf: pd.DataFrame, n_sto
             "이격도": x["threshold"].map(lambda v: f"≤{v}"), "손절": x["stop"].map(stop_label), "보유": x["hold"].map(lambda v: f"{int(v)}일"),
             "시장 필터": x["market_filter"].map(filter_label), "거래": x["trades"].map("{:,.0f}".format),
             "승률": x["win_rate"].map(lambda v: f"{v:.0%}"), "기대값": x["expectancy"].map(pct),
-            "중앙값": x["median_ret"].map(pct), f"~{yr}": x["ev_train"].map(pct), f"{yr + 1}~": x["ev_test"].map(pct)})), ""]
+            "중앙값": x["median_ret"].map(pct), f"{yr}년까지": x["ev_train"].map(pct), f"{yr + 1}년부터": x["ev_test"].map(pct)})), ""]
 
     # 3. portfolio
     out += [f"## 포트폴리오 ({u['initial_capital']:,}달러, 최대 {cfg['stage2']['max_positions']}종목)", "",
-            "한국과 같은 방식: 새 종목에 전날 평가금액의 1/5, 같은 날 신호가 많으면 이격도 낮은 순. 지수는 가격 지수라 배당이 빠져 있다(연 1~2%p 불리).", "",
+            "한국과 같은 방식: 새 종목에 전날 평가금액의 1/5, 같은 날 신호가 많으면 이격도 낮은 순. 지수는 가격 지수라 배당이 빠져 있다(연 1 → 2%p 불리).", "",
             md_table(pd.DataFrame({
                 "조합": pf["조합"], "연환산": pf["cagr"].map(lambda v: f"{v:+.1%}"), "MDD": pf["mdd"].map(lambda v: f"{v:.0%}"),
-                f"~{yr}": pf["cagr_train"].map(lambda v: f"{v:+.1%}"), f"{yr + 1}~": pf["cagr_test"].map(lambda v: f"{v:+.1%}"),
+                f"{yr}년까지": pf["cagr_train"].map(lambda v: f"{v:+.1%}"), f"{yr + 1}년부터": pf["cagr_test"].map(lambda v: f"{v:+.1%}"),
                 "체결 거래": pf.get("trades_taken", pd.Series(dtype=float)).map(lambda v: "" if pd.isna(v) else f"{int(v):,}"),
                 "보유 중인 날": pf.get("invested_share", pd.Series(dtype=float)).map(lambda v: "" if pd.isna(v) else f"{v:.0%}")})), ""]
     return "\n".join(out)

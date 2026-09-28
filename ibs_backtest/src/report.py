@@ -149,7 +149,7 @@ def main() -> None:
             f"| 체결 | 샤프 > {cfg['grid']['benchmark']} 보유 | 낙폭 < {cfg['grid']['benchmark']} 보유 | 손익분기 ≥ 10bp |", "|---|---|---|---|",
             *lines, "",
             f"**결론: {verdict}.** 비용 전 거래당 우위(그리드 평균 {pct(g['gross_expectancy'].mean(), 2)})가 편도 {one_way:.0f}bp 비용에 "
-            f"대부분 없어지고, {fy}년 이후 {cfg['grid']['benchmark']} 보유(연 {pct(bh['cagr'])})를 시장 노출 15~30% 로는 따라가지 못한다. "
+            f"대부분 없어지고, {fy}년 이후 {cfg['grid']['benchmark']} 보유(연 {pct(bh['cagr'])})를 시장 노출 15% → 30% 로는 따라가지 못한다. "
             "낙폭만 작다.", ""]
     text = "\n".join(out)
     (rd / "report.md").write_text(text, encoding="utf-8")

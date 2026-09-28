@@ -270,11 +270,11 @@ def report(cfg, s: pd.DataFrame, base: pd.DataFrame) -> str:
         if x.empty:
             continue
         out += [f"## 손절 {'없음' if pd.isna(stop) else f'{stop:.0%}'}", "",
-                "| 신호 | 보유 | 거래 | 신호 난 날 | 승률 | 평균 | 중앙값 | 초과 | 초과 90% 구간 | 초과 ~" + te + " | 초과 " + str(int(te) + 1) + "~ | 최악 |",
+                "| 신호 | 보유 | 거래 | 신호 난 날 | 승률 | 평균 | 중앙값 | 초과 | 초과 90% 구간 | 초과 " + te + "년까지 | 초과 " + str(int(te) + 1) + "년부터 | 최악 |",
                 "|---|---|---|---|---|---|---|---|---|---|---|---|"]
         for _, r in x.iterrows():
             out.append(f"| {r['set']} | {r['hold']}일 | {r['n']:,} | {r['days']:,} | {r['win']:.1%} | {pct(r['mean'])} | "
-                       f"{pct(r['median'])} | {pct(r['excess'])} | {pct(r['ci_lo'])} ~ {pct(r['ci_hi'])} | "
+                       f"{pct(r['median'])} | {pct(r['excess'])} | {pct(r['ci_lo'])} → {pct(r['ci_hi'])} | "
                        f"{pct(r['excess_train'])} | {pct(r['excess_test'])} | {pct(r['worst'], 1)} |")
         out.append("")
     return "\n".join(out)

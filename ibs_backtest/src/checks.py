@@ -106,7 +106,7 @@ def lookahead(cfg: dict, fr: dict[str, pd.DataFrame]) -> list[str]:
         res.append(tr[tr["exit_date"] < cut].reset_index(drop=True))
     d0 = int((~(res[0] == res[1]).all(axis=1)).sum()) if len(res[0]) == len(res[1]) else abs(len(res[0]) - len(res[1]))
     ok_all &= d0 == 0
-    out.append(f"| SPY 1993~ (단계 0) | <0.20 >0.80 open | - | {d0} |")
+    out.append(f"| SPY 1993년부터 (단계 0) | <0.20 >0.80 open | - | {d0} |")
     out += ["", f"결과: {'통과' if ok_all else '실패'}", ""]
     return out
 

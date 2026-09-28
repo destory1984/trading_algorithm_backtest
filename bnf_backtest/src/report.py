@@ -342,11 +342,11 @@ def main() -> None:
         k = f[f["method"] == "index"].iloc[0]
         rows = [{"시장 필터": filt_label(x), "고치기 전 (연환산 / MDD)": cell(old.loc[x]),
                  "설계서대로 (연환산 / MDD)": cell(base.loc[x]),
-                 f"~{yr}": f"{base.loc[x, 'cagr_train']:+.1%}", f"{yr + 1}~": f"{base.loc[x, 'cagr_test']:+.1%}",
+                 f"{yr}년까지": f"{base.loc[x, 'cagr_train']:+.1%}", f"{yr + 1}년부터": f"{base.loc[x, 'cagr_test']:+.1%}",
                  "체결한 거래": f"{int(base.loc[x, 'trades_taken']):,}",
                  "보유 중인 날 비율": f"{base.loc[x, 'invested_share']:.0%}"} for x in base.index]
         rows.append({"시장 필터": "KOSPI 지수 보유", "고치기 전 (연환산 / MDD)": cell(k), "설계서대로 (연환산 / MDD)": cell(k),
-                     f"~{yr}": f"{k['cagr_train']:+.1%}", f"{yr + 1}~": f"{k['cagr_test']:+.1%}",
+                     f"{yr}년까지": f"{k['cagr_train']:+.1%}", f"{yr + 1}년부터": f"{k['cagr_test']:+.1%}",
                      "체결한 거래": "", "보유 중인 날 비율": "100%"})
         out += [f"같은 조합({name})을 시장 필터만 바꿔 돌린 결과:", "",
                 "- 고치기 전: 그리드의 종목별 거래 목록을 그대로 썼다. 포트폴리오가 사지 않은 거래가 열려 있는 동안에도 "

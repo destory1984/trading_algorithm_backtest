@@ -529,7 +529,7 @@ def readme_block(cfg, s0, st, rp, g, wfs, ov, mx, at, dec, line) -> str:
         out.append(f"- 그리드 샤프 1등: {r['조합']}, 샤프 {num(r['sharpe'])}, 연 {pct(r['cagr'])}, 같은 종목 보유 샤프 {num(r['hold_sharpe'])}.")
     both = int(((u["cagr"] > u["kdd_cagr"]) & (u["cagr"] > u["kexp_cagr"])).sum())
     out.append(f"- {len(u)}개 조합 중 낙폭을 맞춘 보유와 노출을 맞춘 보유를 둘 다 연 수익률에서 이긴 조합은 {both}개다.")
-    out += ["", f"| 걸어가며 검증 {cfg['walkforward']['first_test_year']}~ | 연 수익률 | 샤프 | 같은 종목 보유 샤프 | 후보 조합 DSR | 후보 조합 무작위 PF 백분위 |",
+    out += ["", f"| 걸어가며 검증 {cfg['walkforward']['first_test_year']}년부터 | 연 수익률 | 샤프 | 같은 종목 보유 샤프 | 후보 조합 DSR | 후보 조합 무작위 PF 백분위 |",
             "|---|---|---|---|---|---|"]
     for r in dec.itertuples():
         s, h, o = one(wfs, variant=r.variant, name="wf"), one(wfs, variant=r.variant, name="hold"), primary(ov, r.variant)
