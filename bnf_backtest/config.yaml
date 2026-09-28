@@ -4,7 +4,7 @@ data:
   start: "2008-01-01"        # 신호를 세는 첫날. 네이버가 상장폐지 종목 시세를 2008년 무렵부터 준다
   warmup_start: "2007-01-01" # 지수 120일선 계산용으로 더 앞서 받는 날
   end: null                  # null 이면 최근 거래일까지
-  dir: ../krx_data          # 시세 폴더. 저장소 밖에 두고 여러 알고리즘이 같이 쓴다. 환경변수 KRX_DATA_DIR 가 있으면 그쪽
+  dir: ../../krx_data       # 시세 폴더. 저장소 밖에 두고 여러 알고리즘이 같이 쓴다. 환경변수 KRX_DATA_DIR 가 있으면 그쪽
   request_delay: 0.3         # 요청 사이 지연(초). 0.3 이상
   markets: [KOSPI, KOSDAQ]
 
@@ -97,7 +97,7 @@ walkforward:                 # python -m src.walkforward [--us]
 
 # 미국 주식 (python -m src.us). 그리드·청산 규칙·시장 필터 이름은 위와 같고, 아래만 바꾼다
 us:
-  dir: ../us_data            # krxbt.fetch_us 로 받은 폴더. 환경변수 US_DATA_DIR 가 있으면 그쪽
+  dir: ../../us_data         # krxbt.fetch_us 로 받은 폴더. 환경변수 US_DATA_DIR 가 있으면 그쪽
   market_index: NDX          # 시장 필터(상승장·동반급락)에 쓰는 지수. NDX / DJI / SPX
   min_avg_value: 2.0e+7      # 20일 평균 거래대금 하한(달러)
   min_trades: 100            # 순위를 매길 때 거래 수 하한 (종목이 129개뿐이라 한국보다 낮다)

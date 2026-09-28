@@ -31,7 +31,7 @@ pip install -e ../krx_backtest_core
 시세는 어느 저장소에도 넣지 않는다. 크기가 약 260MB 이고, 네이버 시세를 다시 배포하는 일이 되기 때문이다.
 데이터 폴더 하나를 모든 알고리즘이 같이 읽는다. 안에는 `prices/*.parquet`, `index_*.parquet`, `universe.parquet` 가 있다.
 
-폴더 위치는 환경변수 `KRX_DATA_DIR` 가 있으면 그것을 쓰고, 없으면 config 의 `data.dir` 을 config 파일 기준 상대 경로로 읽는다(`../krx_data`).
+폴더 위치는 환경변수 `KRX_DATA_DIR` 가 있으면 그것을 쓰고, 없으면 config 의 `data.dir` 을 config 파일 기준 상대 경로로 읽는다. 모음 저장소의 알고리즘 폴더에서는 `../../krx_data` 다.
 
 수집·갱신은 알고리즘 저장소 하나에서 돌리면 된다. 다시 돌리면 새 날짜만 받는다.
 
@@ -42,10 +42,10 @@ python -m krxbt.fetch --config path/to/config.yaml
 
 ## 미국 주식 데이터 (`krxbt.fetch_us`)
 
-야후(`yfinance`)에서 일봉을 받아 `../us_data` 에 한국 데이터와 같은 모양으로 둔다. 아직 수집만 하고, 매매 계산(`frame`·`engine`)은 한국 규칙(가격 제한 ±30% 등)에 맞춰져 있어 미국 데이터에는 쓰지 않는다.
+야후(`yfinance`)에서 일봉을 받아 `--dir` 폴더에 한국 데이터와 같은 모양으로 둔다. 아직 수집만 하고, 매매 계산(`frame`·`engine`)은 한국 규칙(가격 제한 ±30% 등)에 맞춰져 있어 미국 데이터에는 쓰지 않는다.
 
 ```
-python -m krxbt.fetch_us --dir ../us_data     # 처음 받기와 갱신 모두. 129종목에 약 3분
+python -m krxbt.fetch_us --dir ../../us_data  # 알고리즘 폴더에서 돌린다. 처음 받기와 갱신 모두. 133종목에 약 3분
 ```
 
 - 종목: 지금의 나스닥100(101개, GOOG·GOOGL 둘 다) + 다우30 + `us_data/watchlist.txt` 에 한 줄씩 적은 종목. 목록은 위키백과 표에서 읽는다. 관심 종목 파일은 저장소에 올리지 않는다.

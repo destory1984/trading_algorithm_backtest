@@ -16,12 +16,15 @@
 - PC 에는 모음 폴더 옆에 옛 폴더 `bnf_backtest`, `krx_backtest_core` 가 아직 있다(깃허브와 같은 내용, 커밋 안 한 것 없음). 지울지 사용자에게 묻는다.
   옛 bnf 폴더의 `results/` 는 이 폴더 `results/` 로 복사해 두었다(42개 파일).
 
-**아직 안 한 것 (모음 폴더로 옮기면서 남은 일)**
-1. 데이터 경로: `config.yaml` 의 `data.dir: ../krx_data`, `us.dir: ../us_data` 는 옛 자리 기준이다. 이 폴더에서는 `../../krx_data`, `../../us_data` 여야 한다(ibs 는 이미 `../../us_data`). 고친 뒤 `python -m src.simulate 005930` 으로 확인.
-2. 엔진 설치: 이 PC 의 `pip install -e` 가 아직 모음 폴더 옆의 옛 `krx_backtest_core` 를 가리킨다. `pip install -e ../krx_backtest_core`(모음 폴더 안)로 다시 깔고 `python -c "import krxbt; print(krxbt.__file__)"` 로 확인. ibs 도 이 설치를 쓴다.
-3. README·엔진 README 의 `../krx_data`, `--dir ../us_data` 설명도 같이 고친다. `krxbt.fetch_us` 기본값 `--dir ../us_data` 도.
-4. 앞으로 엔진 버전을 올리면 태그를 어디(옛 엔진 저장소 / 모음 저장소 `#subdirectory=krx_backtest_core`)에 붙일지 정한다.
-5. 데이터 폴더 `krx_data`, `us_data` 는 모음 폴더 옆에 그대로 두었다. 저장소에 안 올린다. `us_data/watchlist.txt` 는 사용자 관심 종목이라 저장소에 넣지 않는다.
+**모음 폴더로 옮기면서 한 일 (09-28 정리 세션)**
+- `config.yaml` 데이터 경로를 `../../krx_data`, `../../us_data` 로 고쳤다. README 두 곳도 같이.
+- 엔진을 `pip install --no-deps -e ../krx_backtest_core`(모음 폴더 안)로 다시 깔았다. `--no-deps` 는 다른 패키지 버전을 건드리지 않으려고 붙였다.
+- 확인: `python -m src.simulate 005930` 이 돌고, `python -m src.checks` 의 `results/checks.md` 가 옮기기 전과 바이트 단위로 같다.
+- 엔진 코드(`fetch_us` 의 기본값 `--dir ../us_data` 포함)는 고치지 않았다. `requirements.txt` 가 가리키는 태그 v0.2.1 과 같게 두려는 것이다. 대신 엔진 README 에 `--dir ../../us_data` 를 적었다.
+
+**아직 안 한 것**
+1. 앞으로 엔진 버전을 올리면 태그를 어디(옛 엔진 저장소 / 모음 저장소 `#subdirectory=krx_backtest_core`)에 붙일지 정한다. 그때 `fetch_us` 기본값도 고친다.
+2. 데이터 폴더 `krx_data`, `us_data` 는 모음 폴더 옆에 그대로 두었다. 저장소에 안 올린다. `us_data/watchlist.txt` 는 사용자 관심 종목이라 저장소에 넣지 않는다.
 
 **09-27~28 에 한 일 (자세한 숫자는 README)**
 - 폭락일에 자리 늘리기(`stage2.slot_variants`): 자리만 늘리면 자리당 돈이 줄어 연환산 제자리, 낙폭만 준다.

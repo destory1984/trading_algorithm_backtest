@@ -14,8 +14,8 @@
   커밋 기록은 모음 저장소의 `a712c9e` 하나다. 깃허브에 올렸다.
 
 **폴더 정리 때 챙길 것**
-1. 엔진 설치: ibs 도 `pip install -e` 로 깔린 엔진을 쓴다. 지금은 모음 폴더 옆 옛 `krx_backtest_core` 를 가리킨다. 옛 폴더를 지우기 전에
-   모음 폴더 안 `krx_backtest_core` 로 다시 깔아야 한다(bnf NOTES 2번과 같은 일). 다시 깐 뒤 `python -m src.grid` 가 돌면 된다.
+1. ~~엔진 설치~~ — 09-28 모음 폴더 안 `krx_backtest_core` 로 다시 깔았다. 다시 돌린 `grid.csv`, `combos.csv`, `engine_match.csv`, `checks.md` 가
+   옮기기 전과 바이트 단위로 같고, `grid_trades.parquet` 334,035행도 같다.
 2. 데이터: ibs `config.yaml` 은 이미 `us.dir: ../../us_data` 다. `us_data` 를 옮기면 이 값을 같이 고친다(또는 환경변수 `US_DATA_DIR`).
 3. `us_data/watchlist.txt`: 이번에 맨 끝에 주석 한 줄(`# IBS 평균회귀 ...`)과 SPY, QQQ, IWM, DIA 네 줄을 더했다. 그 위는 원래 사용자 관심 종목 그대로다.
    `fetch_us` 를 한 번 다시 돌려 다른 종목 시세도 2026-09-25 까지 새로 받아졌다.
