@@ -1,0 +1,90 @@
+# 한국 종목 터틀 돌파 설정. 모든 값은 여기에만 둔다. 지시서 SPEC.md. 결과를 보기 전에 적었다.
+# data / universe / indicators / costs 는 krxbt(krx_backtest_core) 가 읽는 이름이다.
+
+data:
+  dir: ../../krx_data        # 환경변수 KRX_DATA_DIR 가 있으면 그쪽
+  start: "2007-01-01"        # krxbt 의 eligible 기간 시작. 매매는 curve_start 부터
+  end: "2026-09-23"          # 봉인선. 이 날 뒤는 불러온 직후 잘라낸다
+  markets: [KOSPI, KOSDAQ]
+  curve_start: "2008-04-01"  # 곡선 첫날
+  split: "2016-12-31"        # 전반 끝
+
+universe:                    # bnf 와 같다. min_listing_days 만 25 → 55
+  min_listing_days: 55
+  min_avg_value: 1.0e+9
+  avg_value_window: 20
+  exclude_name_patterns: ["스팩", "리츠", '\d+호$']
+  exclude_preferred: true
+  delisting_sale_days: 7
+  price_break_drop: -0.30
+  price_break_drop_pre_2015: -0.16
+  long_halt_days: 3
+  resume_gap_break: 0.5
+
+indicators:
+  ma_window: 55              # krxbt 는 이 값만큼 상장 일수를 요구하고, 끊김 뒤 이 거래일 수만큼 막는다(SPEC 2)
+  index_ma_window: 120       # krxbt 가 요구하는 값. 여기서는 쓰지 않는다
+  index_disparity_crash: 95  # 같음
+
+costs:                       # bnf 와 같다
+  buy_fee: 0.00015
+  sell_fee: 0.00015
+  sell_tax: 0.0020
+  sell_tax_schedule:
+    - ["2000-01-01", 0.0030]
+    - ["2019-05-30", 0.0025]
+    - ["2021-01-01", 0.0023]
+    - ["2023-01-01", 0.0020]
+    - ["2024-01-01", 0.0018]
+    - ["2025-01-01", 0.0015]
+    - ["2026-01-01", 0.0020]
+  slippage: 0.001
+
+turtle:                      # 책의 값
+  n_window: 20
+  risk_per_unit: 0.01
+  stop_n: 2.0
+  add_n: 0.5
+  max_units_per_stock: 4
+  max_units_total: 12
+  failsafe_breakout: 55      # S1 이 건너뛴 뒤에도 사는 돌파
+  capital: 100000000
+
+rules:                       # main = 판정, neighbors = 이웃(진입 돌파 기간만)
+  S1: {entry: 20, exit: 10, filter: true, neighbors: [15, 25]}
+  S2: {entry: 55, exit: 20, filter: false, neighbors: [45, 65]}
+
+kospi_dividend: 0.017        # 코스피 가격 지수에 날마다 (1.017)^(1/252) - 1 을 더한다(bnf 심화와 같음)
+
+random:
+  runs: 200
+  seed: 42
+  workers: 6
+
+dsr:
+  trials: 1532               # 한국 누적 1,526 + 이 폴더 6
+  bnf_grid_trades: ../bnf_backtest/results/trades.parquet   # 민감도: V 를 bnf 그리드 신호일 샤프 분산으로(있을 때만)
+
+pass:
+  dsr_min: 0.95
+  random_pct_min: 0.95
+  slippage_check: 0.003
+  top_days: 5
+
+slippages: [0.001, 0.002, 0.003, 0.005]
+
+stress:
+  windows:
+    2008 금융위기: ["2008-06-01", "2009-03-31"]
+    2011-08 급락: ["2011-07-15", "2011-10-31"]
+    2020 → 21 코로나 뒤 급등: ["2020-03-01", "2021-06-30"]
+    2022 하락장: ["2022-01-01", "2022-12-31"]
+    2023 이차전지: ["2023-01-01", "2023-12-31"]
+    2024-08 급락: ["2024-07-15", "2024-09-30"]
+    2025 → 2026-06 상승: ["2025-01-01", "2026-05-31"]
+    2026-06 → 08 급락: ["2026-06-01", "2026-08-31"]
+
+checks:
+  perturb_days: 20
+  seed: 7
+  hand_trades: 3
