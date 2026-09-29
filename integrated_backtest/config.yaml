@@ -134,3 +134,15 @@ live:
   verdict:
     mdd_ratio: 0.50          # 기준 2
     min_hold_dd: -0.20       # 기준 1·2 는 TQQQ 보유 낙폭이 이보다 깊었을 때만 판정
+
+# 걸어가며 고르기 (SPEC3.md, python -m src.kr.wf). 후보는 kr.B.grid, 시장 합산
+wf:
+  first_year: 2017
+  last_year: 2026
+  train_start: "2015-01-01"
+  min_trades: 200
+  rolling_years: 3           # 민감도 (가)
+  years_above_median: 8      # 기준 3
+  halves: [["2017-01-01", "2021-12-31"], ["2022-01-01", "2026-12-31"]]
+  slippage_check: 0.002      # 기준 5
+  trials: 3288               # 기준 6
