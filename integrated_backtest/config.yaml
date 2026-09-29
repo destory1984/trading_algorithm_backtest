@@ -1,0 +1,122 @@
+# 통합 백테스트 설정. 모든 값은 여기에만 둔다. 지시서 SPEC.md(원문 ORIGINAL_SPEC.md). 결과를 보기 전에 적었다.
+# data / universe / indicators / costs 는 krxbt(krx_backtest_core) 가 읽는 이름이다.
+
+data:
+  dir: ../../krx_data        # 환경변수 KRX_DATA_DIR 가 있으면 그쪽
+  start: "2015-01-01"        # krxbt eligible 시작 = 한국 신호 첫날
+  end: "2026-09-23"          # 한국 봉인선
+  markets: [KOSPI, KOSDAQ]
+  keep_from: "2013-06-01"    # 이 날부터 배열로 남긴다(지표 계산은 전체 가격으로 한다)
+  train_end: "2020-12-31"    # 학습 2015 → 2020, 검증 2021 → 끝
+
+universe:                    # bnf 와 같고 min_listing_days 만 250
+  min_listing_days: 250
+  min_avg_value: 1.0e+9
+  avg_value_window: 20
+  exclude_name_patterns: ["스팩", "리츠", '\d+호$']
+  exclude_preferred: true
+  delisting_sale_days: 7
+  price_break_drop: -0.30
+  price_break_drop_pre_2015: -0.16
+  long_halt_days: 3
+  resume_gap_break: 0.5
+
+indicators:
+  ma_window: 250             # krxbt: 상장 250거래일, 끊김 뒤 250거래일 막음(SPEC 3)
+  index_ma_window: 120       # 지수 국면: 지수 종가 > 120일선
+  index_disparity_crash: 95  # krxbt 가 요구. 쓰지 않는다
+
+costs:
+  buy_fee: 0.00015
+  sell_fee: 0.00015
+  sell_tax: 0.0020
+  sell_tax_schedule:
+    - ["2000-01-01", 0.0030]
+    - ["2019-05-30", 0.0025]
+    - ["2021-01-01", 0.0023]
+    - ["2023-01-01", 0.0020]
+    - ["2024-01-01", 0.0018]
+    - ["2025-01-01", 0.0015]
+    - ["2026-01-01", 0.0020]
+  slippage: 0.001            # C 는 kr.C.slippage
+
+kr:
+  capital: 100000000
+  slots: 5
+  kospi_dividend: 0.017
+  price_limit: 0.30
+  price_limit_pre: 0.15      # 2015-06-15 전
+  price_limit_change: "2015-06-15"
+  A2:
+    main: {rsi: 10, stop: null, regime: false, market: ALL}
+    neighbors: [{rsi: 5}, {rsi: 15}, {stop: -0.08}]
+    grid: {rsi: [5, 10, 15], stop: [null, -0.08], regime: [false, true]}
+    ma_trend: 200
+    ma_exit: 5
+    max_hold: 10
+  B:
+    main_O: {n: 60, mult: 1.4, stop: -0.07, exit: ma20, filter: rs80, regime: true, market: ALL}
+    main_M: {n: 60, mult: 1.4, stop: -0.07, exit: ma20, filter: template, regime: true, market: ALL}
+    neighbors: [{mult: 2.0}, {stop: -0.08}, {exit: ll20}, {n: 20}]
+    grid: {n: [20, 60], mult: [1.4, 2.0, 3.0], stop: [-0.05, -0.07, -0.08, -0.12, atr2], exit: [ll10, ll20, ma20],
+           filter: [none, rs80, template], regime: [false, true]}
+    max_hold: 60
+    rs_window: 250
+  C:
+    main: {k: 0.5, filter: none, regime: false, market: ALL}
+    neighbors: [{k: 0.3}, {k: 0.7}, {filter: ma5}]
+    grid: {k: [0.3, 0.5, 0.7, var], filter: [none, ma5, noise, ma5noise], regime: [false, true]}
+    top_n: 200               # 전날까지 20일 평균 거래대금 상위
+    orders: 5                # 장 전에 주문하는 종목 수(자리 수와 같다)
+    noise_max: 0.5           # 노이즈 필터: 20일 평균 노이즈 ≤ 이 값(원문에 값이 없어 결과 전에 정함)
+    limit_guard: 0.97        # 목표가가 상한가의 이 비율 이상이면 사지 않는다
+    slippage: 0.002
+  markets: [KOSPI, KOSDAQ, ALL]
+  random_runs: 200
+  seed: 42
+  workers: 6
+  turtle_risk: 0.01          # 민감도: 터틀식 비중
+
+dsr:
+  trials_kr: 3284            # 한국 누적 1,532 + 이 폴더 그리드 1,752
+  dsr_min: 0.95
+  random_pct_min: 0.95
+  top_days: 5
+  slippage_mult: 2.0
+
+us:
+  dir: ../../us_data         # 환경변수 US_DATA_DIR
+  hist_dir: ../../hist_data  # 환경변수 HIST_DATA_DIR
+  fetch: [SCZ, AGG, BIL]
+  qqq_from: "1999-03-10"
+  fetch_end: "2026-09-26"    # yfinance end 는 그날을 뺀다 → 2026-09-25 까지
+  end: "2026-09-25"          # 미국 봉인선
+  fee: 0.0007
+  slippage: 0.0005
+  capital: 100000
+  synth_fee: 0.0095          # 합성 3배 QQQ 연 보수
+  synth_leverage: 3
+  synth_gap_max: 0.02        # 검증 7
+  U1:
+    tickers: {TQQQ: 0.10, SOXL: 0.12}
+    splits: 40
+    grid: {splits: [20, 30, 40, 60], target: [0.05, 0.08, 0.10, 0.12, 0.15]}
+  U2:
+    tickers: [TQQQ, SOXL]
+    start_stock: 0.5
+    growth: 0.10
+    period: 10
+    band: 0.15
+    neighbors_band: [0.10, 0.20]
+  U3:
+    G: {lookback: 12, neighbors: [9, 15]}
+    A: {lookbacks: [1, 3, 6], safe: TLT, neighbor_safe: AGG}
+
+compare:
+  start: "2015-01-01"
+  vol_window: 20
+
+checks:
+  perturb_days: 20
+  seed: 7
+  hand_trades: 3

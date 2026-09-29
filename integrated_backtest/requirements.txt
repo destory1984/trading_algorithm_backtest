@@ -1,0 +1,8 @@
+pandas>=2.2
+numpy
+numba
+pyarrow
+PyYAML
+yfinance
+matplotlib
+krxbt @ git+https://github.com/destory1984/krx_backtest_core@v0.2.1
