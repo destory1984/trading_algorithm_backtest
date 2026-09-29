@@ -1,6 +1,6 @@
-# 밸류 리밸런싱 TQQQ 기록 장치 작업 지시서 (초안)
+# 밸류 리밸런싱 TQQQ 기록 장치 작업 지시서
 
-작성일 2026.9.29. 상태: 초안. 사용자가 "이대로 재가한다"고 하기 전에는 코드를 짜거나 데이터를 받지 않는다.
+작성일 2026.9.29. 상태: 2026-09-29 사용자 승인(초안 `SPEC2_draft.md` 를 고치지 않고 이 이름으로 바꿨다).
 같은 폴더(`integrated_backtest`)에서 한다. 규칙 코드는 `src/us/strategies.py` 의 `value_rebalance` 를 바탕으로 한다. 지금 도는 변동성 목표 기록 장치(index_timing_backtest SPEC2, 작업 `vol_target_log`)는 건드리지 않는다.
 
 ## 1. 목적

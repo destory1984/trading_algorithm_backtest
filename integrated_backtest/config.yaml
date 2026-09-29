@@ -120,3 +120,17 @@ checks:
   perturb_days: 20
   seed: 7
   hand_trades: 3
+
+# 밸류 리밸런싱 TQQQ 기록 장치 (SPEC2.md, python -m src.us.live_gate / live_vr / live_report). 규칙 값은 us.U2 를 쓴다
+live:
+  dir: ../../live_data       # 기록 장치 전용. 환경변수 LIVE_DATA_DIR 가 있으면 그쪽
+  ticker: TQQQ
+  bands: [0.15, 0.10, 0.20]  # 첫 값이 판정 대상, 나머지는 참고
+  stale_days: 4
+  telegram_env: [TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID]
+  gate: {start: "2010-02-11", end: "2026-09-25"}
+  review_days: 252
+  verdict_days: 504
+  verdict:
+    mdd_ratio: 0.50          # 기준 2
+    min_hold_dd: -0.20       # 기준 1·2 는 TQQQ 보유 낙폭이 이보다 깊었을 때만 판정
