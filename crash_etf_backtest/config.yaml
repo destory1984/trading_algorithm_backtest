@@ -1,0 +1,77 @@
+# 나라별 ETF 폭락일 매수 설정. 모든 값은 여기에만 둔다. 지시서 SPEC.md. 결과를 보기 전에 적었다.
+
+data:
+  hist_dir: ../../hist_data  # 환경변수 HIST_DATA_DIR 가 있으면 그쪽
+  sub: country               # hist_data/country/<종목>.parquet
+  fetch_start: "1996-01-01"
+  fetch_end: "2026-09-26"    # 이 날 전까지만 요청한다(yfinance end 는 그날을 빼고 준다)
+  start: "1997-01-02"        # 곡선 첫날
+  end: "2026-09-25"          # 봉인선. 불러온 직후 이 날 뒤를 잘라낸다
+  latest_first_day: "2001-01-01"   # 첫날이 이보다 늦은 종목은 뺀다(SPEC 2)
+  periods:                   # 기준 4
+    "1997 → 2011": ["1997-01-02", "2011-12-31"]
+    "2012 → 2026-09": ["2012-01-01", "2026-09-25"]
+
+tickers:                     # 판정 19개
+  EWA: 호주
+  EWO: 오스트리아
+  EWK: 벨기에
+  EWC: 캐나다
+  EWQ: 프랑스
+  EWG: 독일
+  EWH: 홍콩
+  EWI: 이탈리아
+  EWJ: 일본
+  EWM: 말레이시아
+  EWW: 멕시코
+  EWN: 네덜란드
+  EWS: 싱가포르
+  EWP: 스페인
+  EWD: 스웨덴
+  EWL: 스위스
+  EWU: 영국
+  EWT: 대만
+  EWZ: 브라질
+
+rule:                        # bnf 동반급락 규칙에서 가져와 고정
+  ma: 25
+  main: 0.95
+  neighbors: [0.93, 0.97]
+  max_hold: 20               # 진입일이 1일째, 20일째 종가에 판다
+  min_dollar_volume: 1000000 # 신호일 20일 평균 거래대금(원래 종가 × 거래량)
+  dv_window: 20
+
+cost: 0.0012                 # 편도: 수수료 0.07% + 슬리피지 0.05%
+cash: 0.0                    # 본 가정: 쉬는 돈 연 수익
+capital: 100000
+
+pass:
+  ticker_share: 0.6666667    # 기준 1: 거래당 평균 > 0 인 종목 비율
+  monkey_runs: 200
+  monkey_pct: 0.95
+  cost_x2: 0.0024            # 기준 6
+  drop_days: 5               # 기준 7
+  dsr: 0.95                  # 기준 8
+  trials: 3
+
+sens:                        # 민감도(판정 제외)
+  cash: 0.02
+  late_start: "2004-01-02"
+  dsr_trials: 1443           # bnf 그리드 1,440 + 3
+  bnf_grid_trades: ../bnf_backtest/results/trades.parquet
+
+stress:
+  1997 → 98 아시아·러시아: ["1997-07-01", "1998-10-31"]
+  2000 → 02 닷컴: ["2000-03-01", "2002-10-31"]
+  2007 → 09 금융위기: ["2007-10-01", "2009-03-31"]
+  2011 유럽 재정: ["2011-05-01", "2011-10-31"]
+  2015 → 16 중국·유가: ["2015-08-01", "2016-02-29"]
+  2020 코로나: ["2020-02-01", "2020-03-31"]
+  2022 금리: ["2022-01-01", "2022-10-31"]
+
+checks:
+  big_move: 0.15
+  perturb_days: 20
+  seed: 42
+  hand_tickers: [EWJ, EWG, EWH, EWZ, EWU]
+  ref_tickers: [EWA, EWW, EWT]
